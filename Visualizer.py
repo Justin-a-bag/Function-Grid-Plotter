@@ -3,4 +3,5 @@
 # I suppose we also put like the list of equations and colors and all that jazz in here too?
 # And also like we look through and draw stuff in here too? 
 # So the Draw() function gets put here?
+#we're also gonna have to loop through all the points in here too
 #Yeah this file is gonna have a lot of stuff
