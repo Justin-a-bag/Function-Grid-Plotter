@@ -7,16 +7,77 @@ class Equation:
   #only returns value for a single point
   #as_string(self)->string:
 
+  tree: OperatorNode
 
+  def tokenize(equation: str) -> list:
+    """
+    Reads the equation string from left to right, grouping characters 
+    into 'tokens' based on their type.
+    this allows us to then turn these individual tokens into the tree. 
+    """
+    tokens = []
+    i = 0
+    # when taking in latex, convert all the latex stuff into standard
+    # also i didn't account stuff that takes in multiple inputs in separate brackets so we might need to adjust this tokenizer
+    equation = equation.replace('{', '(').replace('}', ')').replace(' ', '')
+
+    while i < len(equation):
+        char = equation[i]
+
+        #Numbers and decimals
+        if char.isdigit() or char == '.':
+            unit = ""
+            while i < len(equation) and (equation[i].isdigit() or equation[i] == '.'):
+                unit += equation[i]
+                i += 1
+            tokens.append(unit)
+            #since i has already been incremented we can just leave it like this
+
+        # Handle LaTeX/Functions (starts with \ or is a word)
+        # \\ is just '\'
+        if char.isalpha() or char == '\\':
+            unit = ""
+            # If it starts with \, keep the backslash but keep going
+            if char == '\\':
+                unit += char
+                i += 1
+            
+            # Keep grabbing letters until we hit a symbol or number
+            while i < len(equation) and equation[i].isalpha():
+                unit += equation[i]
+                i += 1
+            
+            # Clean up: remove the leading backslash because we don't need it
+            unit = unit.lstrip('\\')
+            tokens.append(unit)
+
+        # 4. Handle Single Symbols (+, -, *, /, ^, (, ))
+        if char in "+-*/^()":
+            tokens.append(char)
+            i += 1
+            continue
+
+        # 5. Fallback for unexpected characters
+        i += 1
+    
+    return tokens
+
+  
+
+  
   #this is chatgpted so you can change these implementations
   def __init__(infix_string: str):
+    #guys guys femtanyl reference
+    tokenized_input=tokenize(infix_string)
+    #i'm going out for dinner rn you guys do the shunting yard and actual builder now
     
     # 1. Tokenize -> 2. Shunting-Yard -> 3. Stack-based Build
-    
+  
     
   def evaluate(self, x: float, y: float) -> float:
       #this is the tree traversal step; the entire thing should return a float
       #evaluate the trees on the upper levels then evaluate this bottom node you get the point
+      return tree.evaluate(x,y)
 
   class OperatorNode(ExprNode):
     #op is either a string (the operation) or a value (a number or x or y)
@@ -38,12 +99,16 @@ class Equation:
         vals = [c.evaluate(x, y) for c in self.children]
 
         if self.op == 'nan':
+          #not a number error
           return 'nan'
         if self.op == 'invalid':
+          #invalid input error
           return 'invalid'
       
-        if c in '1234567890.-' for c in self.op: 
+        if c in '1234567890.' for c in self.op: 
           return float(self.op)
+        if self.op=='':
+          return 0.0
         if self.op == 'x':
           return x
         if self.op == 'y':
@@ -60,6 +125,6 @@ class Equation:
           return vals[0] ** vals[1]
         # Add other things after here
         #grammar isn't too important in this step since we can make the grammar whatever we want
-        return 0.0
+        return 'invalid'
 
   
