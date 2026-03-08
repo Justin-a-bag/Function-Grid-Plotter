@@ -19,14 +19,47 @@ class Equation:
       #evaluate the trees on the upper levels then evaluate this bottom node you get the point
 
   class OperatorNode(ExprNode):
-    def __init__(self, op: str, left: Equation, right: ExprNode = None):
+    #op is either a string (the operation) or a value (a number or x or y)
+    op: str
+    children: list
+    
+    def __init__(self, op: str, children: list):
         self.op = op
-        self.left = left
-        self.right = right
+        #children must be an ordered list
+        self.children = children
 
+    
+    
     def evaluate(self, x, y):
         # Implementation of math logic (e.g., if self.op == '+': ...)
         #evaluate part of a subtree
-        
+        def evaluate(self, x, y):
+        # Evaluate children first
+        vals = [c.evaluate(x, y) for c in self.children]
+
+        if self.op == 'nan':
+          return 'nan'
+        if self.op == 'invalid':
+          return 'invalid'
+      
+        if c in '1234567890.-' for c in self.op: 
+          return float(self.op)
+        if self.op == 'x':
+          return x
+        if self.op == 'y':
+          return y
+        if self.op == '+': 
+          return vals[0] + vals[1]
+        if self.op == '-': 
+          return vals[0] - vals[1]
+        if self.op == '*': 
+          return vals[0] * vals[1]
+        if self.op == '/': 
+          return vals[0] / vals[1] if vals[1] != 0 else 'nan'
+        if self.op == '^': 
+          return vals[0] ** vals[1]
+        # Add other things after here
+        #grammar isn't too important in this step since we can make the grammar whatever we want
+        return 0.0
 
   
