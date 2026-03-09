@@ -81,12 +81,25 @@ class Equation:
         tokenized_input = self.tokenize(infix_string)
 
         # 1. Tokenize -> 2. Shunting-Yard -> 3. Stack-based Build
+
+
+        """
+        Hi guys if you're reading this that means you're working on the project
+        yeah uh this is the thing that takes in input and allows you to do stuff with it i guess
+        Precedence is all the stuff that involves bedmas and also input requirements
+        replaceable is meant moreso for alternative ways of writing the same function multiple times
+        for instance, in desmos copying '*' becomes '\cdot'
+        """
         PRECEDENCE = {
             '+': (1, 2), '-': (1, 2),
             '*': (2, 2), '/': (2, 2),
             '^': (3, 2),
             'sin': (4, 1), 'cos': (4, 1), 'tan': (4, 1),'sec': (4, 1), 'csc': (4, 1), 'cot': (4, 1),
-            'log': (4, 2), 'ln': (4, 1)
+            'log': (4, 1), 'ln': (4, 1)
+
+        }
+        REPLACEABLE = {
+            'cdot':'*', 'times':'*'
         }
 
         output_stack = []  # This stores our completed Tree Nodes
@@ -126,6 +139,7 @@ class Equation:
                 operator_stack.pop()  # Remove the '('
 
             # STEP 4: Handle Operators/Functions
+            
             elif token in PRECEDENCE:
                 # While the operator at the top of the stack is "stronger" than current token,
                 # we must solve that one first.
@@ -133,6 +147,14 @@ class Equation:
                        PRECEDENCE[token][0]):
                     apply_operator()
                 operator_stack.append(token)
+                
+            elif token in REPLACEABLE:
+                # Same as above, only it looks at REPLACEABLE to find the correct symbol
+                while (operator_stack and operator_stack[-1] != '(' and PRECEDENCE[operator_stack[-1]][0] >=
+                       PRECEDENCE[REPLACEABLE[token]][0]):
+                    apply_operator()
+                operator_stack.append(REPLACEABLE[token])
+                
 
             # STEP 5: Final Cleanup
             # Solve any remaining operators in the stack
@@ -168,6 +190,8 @@ class Node:
             # invalid input error
             return 'invalid'
 
+
+        #Every time you add a function to PRECEDENCE add its implementation down here
         if isinstance(self.op, float):
             return float(self.op)
         if self.op == '':
