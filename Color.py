@@ -1,7 +1,7 @@
 from __future__ import annotations 
 import math
 
-import Equation
+from Equation import Equation
 class Color:
   """
   A wrapper class that maps values to colors
