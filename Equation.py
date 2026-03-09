@@ -111,42 +111,59 @@ class Equation:
         output_stack = []  # This stores our completed Tree Nodes
         operator_stack = []  # This stores operators that are waiting for their children
 
+        """
+        For instance, 2x+y-3y/x^2 becomes 2*x+y-3*y/x^2
+        this then gets turned into 2 x * y + 3 - y * x 2 ^ /
+        which then gets squeeshed in the right way into (((((2 x *) y +) 3 -) y *) (x 2 ^) /)
+        and that's what the tree looks like basically
+        """
+
+
+        #putting the def inside init because i want it to see the variables and stuff
+        #i am describing everything like i'm an israeli soldier in Gaza
         def apply_operator():
             """Pops an operator and its required children to create a sub-tree."""
             op = operator_stack.pop()
             num_args = PRECEDENCE[op][1]
 
-            # Pop children in reverse order (since stacks are Last-In-First-Out)
+            # Kill children in reverse order starting with the youngest (since stacks are Last-In-First-Out)
+            
             children = []
             for _ in range(num_args):
+                #take the children from their old family, put them in a new family
                 children.append(output_stack.pop())
+            #make it so that the eldest is arranged first, since it's easier to abduct them younger
             children.reverse()
 
-            # Create a new branch and put it back on the output
+            # Create a new family and put it back on the output to fend for themselves
             output_stack.append(Node(op, children))
 
         for token in tokenized_input:
-            # STEP 1: If it's a Number, make it a leaf and push to output
+            #remember, all children go in the output stack pile
+            # STEP 1: If it's a Number, it's a child
             if token.replace('.', '', 1).isdigit():
                 output_stack.append(Node(float(token)))
 
-            # STEP 2: If it's x or y, make it a variable leaf
+            # STEP 2: If it's x or y, don't let its size deceive you, it's still a child
             elif token in ('x', 'y'):
                 output_stack.append(Node(token))
 
             # STEP 3: Handle Parentheses
+            #parentheses aren't human, they're put in a separate stack
             elif token == '(':
                 operator_stack.append(token)
 
+            #okay but this guy is special because if this guy appears you gotta kill a bunch of people
             elif token == ')':
-                # Solve everything inside the brackets
+                # Loop through and add combine families until you're done
                 while operator_stack and operator_stack[-1] != '(':
                     apply_operator()
                 operator_stack.pop()  # Remove the '('
 
             # STEP 4: Handle Operators/Functions
-            
+            #everything here deals with operators/functions
             elif token in PRECEDENCE:
+                #there are special types of people we gotta look out for
                 # While the operator at the top of the stack is "stronger" than current token,
                 # we must solve that one first.
                 while (operator_stack and operator_stack[-1] != '(' and PRECEDENCE[operator_stack[-1]][0] >=
@@ -155,6 +172,7 @@ class Equation:
                 operator_stack.append(token)
                 
             elif token in REPLACEABLE:
+                #you see, these people aren't citizens so we have to look at their birth certificates to find their real identities
                 # Same as above, only it looks at REPLACEABLE to find the correct symbol
                 while (operator_stack and operator_stack[-1] != '(' and PRECEDENCE[operator_stack[-1]][0] >=
                        PRECEDENCE[REPLACEABLE[token]][0]):
@@ -163,6 +181,7 @@ class Equation:
                 
 
             # STEP 5: Final Cleanup
+            #kill any surviving residents
             # Solve any remaining operators in the stack
         while operator_stack:
             apply_operator()
