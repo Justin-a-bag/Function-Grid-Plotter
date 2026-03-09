@@ -162,7 +162,7 @@ class Equation:
             apply_operator()
 
         # The very last item on the output stack is the Root of our tree
-        return output_stack[0]
+        self.tree = output_stack[0]
 
     def evaluate(self, x: float, y: float) -> float:
         # this is the tree traversal step; the entire thing should return a float
@@ -183,12 +183,12 @@ class Node:
         # Evaluate children first
         vals = [c.evaluate(x, y) for c in self.children]
 
-        if self.op == 'nan':
-            # not a number error
-            return 'nan'
-        if self.op == 'invalid':
+        if self.op == 'invalid' or any(c=='invalid' for c in vals):
             # invalid input error
             return 'invalid'
+        if self.op == 'nan' or any(c=='nan' for c in vals):
+            # not a number error
+            return 'nan'
 
 
         #Every time you add a function to PRECEDENCE add its implementation down here
