@@ -10,7 +10,7 @@ class Equation:
 
     tree: Node
 
-    def tokenize(eq: str) -> list:
+    def tokenize(self, eq: str) -> list:
         """
         Reads the equation string from left to right, grouping characters
         into 'tokens' based on their type.
