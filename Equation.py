@@ -22,8 +22,9 @@ class Equation:
         # when taking in latex, convert all the latex stuff into standard
         # also i didn't account stuff that takes in multiple inputs in separate brackets so we might need to adjust this tokenizer
 
-        equation = eq.replace('{', '(').replace('}', ')').replace(' ', '')
-
+        equation = eq.replace('{', '(').replace('}', ')').replace(' ', '').replace('(-','(0-')
+        if equation.startswith('-'):
+            equation = '0' + equation
         while i < len(equation):
             char = equation[i]
 
@@ -62,7 +63,18 @@ class Equation:
                 # skip bad symbols
                 i += 1
 
-        return tokens
+        #making it so that you can do stuff like 2x instead of 2*x
+        final_tokens = []
+        for j in range(len(tokens)):
+            final_tokens.append(tokens[j])
+            if j < len(tokens) - 1:
+                curr_token = tokens[j]
+                next_token = tokens[j+1]
+                # If a number is followed by a variable/function or '('
+                if (curr_token.replace('.', '', 1).isdigit() or curr_token in ('x', 'y', ')')) and (next_token.isalpha() or next_token == '('):
+                    final_tokens.append('*')
+
+        return final_tokens
 
     def __init__(self, infix_string: str):
         # guys guys femtanyl reference
@@ -73,7 +85,7 @@ class Equation:
             '+': (1, 2), '-': (1, 2),
             '*': (2, 2), '/': (2, 2),
             '^': (3, 2),
-            'sin': (4, 1), 'cos': (4, 1), 'tan': (4, 1),
+            'sin': (4, 1), 'cos': (4, 1), 'tan': (4, 1),'sec': (4, 1), 'csc': (4, 1), 'cot': (4, 1),
             'log': (4, 2), 'ln': (4, 1)
         }
 
@@ -166,7 +178,7 @@ class Node:
             return y
         if self.op == '+':
             return vals[0] + vals[1]
-        if self.op == '-':
+        if self.op == '-' or self.op == 'frac':
             return vals[0] - vals[1]
         if self.op == '*':
             return vals[0] * vals[1]
