@@ -29,6 +29,7 @@ class Equation:
             char = equation[i]
 
             # Numbers and decimals
+            #if it sees a number then it reads the full number and makes it a token
             if char.isdigit() or char == '.':
                 unit = ""
                 while i < len(equation) and (equation[i].isdigit() or equation[i] == '.'):
@@ -39,6 +40,7 @@ class Equation:
 
             # Handle LaTeX/Functions (starts with \ or is a word)
             # \\ is just '\'
+            #if it sees a word or smth it makes it a token
             elif char.isalpha() or char == '\\':
                 unit = ""
                 # If it starts with \, keep the backslash but keep going
@@ -55,6 +57,8 @@ class Equation:
                 tokens.append(unit)
 
             # 4. Handle Single Symbols (+, -, *, /, ^, (, ))
+            # if it sees a symbol immediately turn it into a token
+            #Note: this implementation might need to be changed if you want to allow ** as an input for ^ or smth like that
             elif char in "+-*/^()":
                 tokens.append(char)
                 i += 1
@@ -66,11 +70,13 @@ class Equation:
         #making it so that you can do stuff like 2x instead of 2*x
         final_tokens = []
         for j in range(len(tokens)):
+            #runs through the full list and adds tokens to the list
             final_tokens.append(tokens[j])
             if j < len(tokens) - 1:
                 curr_token = tokens[j]
                 next_token = tokens[j+1]
-                # If a number is followed by a variable/function or '('
+                # If the token that was just added is a digit/x/y/) and the next digit is a letter/(
+                #there are other cases of this but i'm too lazy to implement that
                 if (curr_token.replace('.', '', 1).isdigit() or curr_token in ('x', 'y', ')')) and (next_token.isalpha() or next_token == '('):
                     final_tokens.append('*')
 
