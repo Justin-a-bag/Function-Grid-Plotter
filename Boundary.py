@@ -9,7 +9,7 @@ class Boundary:
   bounder: Equation
   checkSmaller: bool
 
-  def __init__(self, boundary = Equation("1"), checkSmaller=False)):
+  def __init__(self, boundary = Equation("1"), checkSmaller=False):
     self.boundary=boundary
     self.checkSmaller=checkSmaller
   def inBounds(self,x:float,y:float)->bool:
@@ -18,9 +18,9 @@ class Boundary:
     yeah idk guys it does what it says
     """
     #i think the code is pretty readable just like look at it ig
-    squarevalue=bounder.evaluate(x,y)
+    squarevalue=self.bounder.evaluate(x,y)
     #you guys can decide if we actually want an inclusive/exclusive check for squarevalue right now it's inclusive
-    if checkSmaller==False:
+    if self.checkSmaller==False:
       return squarevalue>=0
     else:
       return squarevalue<=0
