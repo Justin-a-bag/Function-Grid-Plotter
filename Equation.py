@@ -111,7 +111,7 @@ class Equation:
                 # Solve everything inside the brackets
                 while operator_stack and operator_stack[-1] != '(':
                     apply_operator()
-                    operator_stack.pop()  # Remove the '('
+                operator_stack.pop()  # Remove the '('
 
             # STEP 4: Handle Operators/Functions
             elif token in PRECEDENCE:
@@ -120,7 +120,7 @@ class Equation:
                 while (operator_stack and operator_stack[-1] != '(' and PRECEDENCE[operator_stack[-1]][0] >=
                        PRECEDENCE[token][0]):
                     apply_operator()
-                    operator_stack.append(token)
+                operator_stack.append(token)
 
             # STEP 5: Final Cleanup
             # Solve any remaining operators in the stack
@@ -156,7 +156,7 @@ class Node:
             # invalid input error
             return 'invalid'
 
-        if (c in '1234567890.' for c in self.op):
+        if isinstance(self.op, float):
             return float(self.op)
         if self.op == '':
             return 0.0
