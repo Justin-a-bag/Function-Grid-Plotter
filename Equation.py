@@ -100,8 +100,10 @@ class Equation:
             '+': (1, 2), '-': (1, 2),
             '*': (2, 2), '/': (2, 2),
             '^': (3, 2),
-            'sin': (4, 1), 'cos': (4, 1), 'tan': (4, 1),'sec': (4, 1), 'csc': (4, 1), 'cot': (4, 1),
-            'log': (4, 1), 'ln': (4, 1)
+            'sin': (4, 1), 'cos': (4, 1), 'tan': (4, 1), 'sec': (4, 1), 'csc': (4, 1), 'cot': (4, 1),
+            'arcsin': (4, 1), 'arccos': (4, 1), 'arctan': (4, 1), 'arcsec': (4, 1), 'arccsc': (4, 1), 'arccot': (4, 1),
+            'log': (4, 1), 'ln': (4, 1),
+            'sqrt': (4, 1)
 
         }
         REPLACEABLE = {
@@ -193,6 +195,9 @@ class Equation:
         # this is the tree traversal step; the entire thing should return a float
         # evaluate the trees on the upper levels then evaluate this bottom node you get the point
         return self.tree.evaluate(x, y)
+    #returns size of the tree (number of nodes)
+    def size(self):
+        return self.tree.size()
 
 class Node:
     # op is either a string (the operation) or a value (a number or x or y)
@@ -203,6 +208,10 @@ class Node:
         self.op = op
         # children must be an ordered list
         self.children = children if children is not None else []
+    
+    def size(self):
+        #Quality of life method: returns size of the tree
+        return 1 + sum([c.size() for c in self.children])
 
     def evaluate(self, x, y):
         # Evaluate children first
@@ -235,6 +244,20 @@ class Node:
             return vals[0] / vals[1] if vals[1] != 0 else 'nan'
         if self.op == '^':
             return vals[0] ** vals[1]
+        
+        if self.op == 'sin':
+            return math.sin(vals[0])
+        if self.op == 'cos':
+            return math.cos(vals[0])
+        
+        if self.op == 'arctan':
+            return math.atan(vals[0])
+        if self.op == 'arccot':
+            return math.pi/2-math.atan(vals[0])
+        if self.op == 'ln':
+            return math.log(vals[0])if vals[0]>0 else 'nan'
+        if self.op == 'sqrt':
+            return math.sqrt(vals[0]) if vals[0]>=0 else 'nan'
         # Add other things after here
         # grammar isn't too important in this step since we can make the grammar whatever we want
         return 'invalid'
