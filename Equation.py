@@ -77,7 +77,7 @@ class Equation:
                 next_token = tokens[j+1]
                 # If the token that was just added is a digit/x/y/) and the next digit is a letter/(
                 #there are other cases of this but i'm too lazy to implement that
-                if (curr_token.replace('.', '', 1).isdigit() or curr_token in ('x', 'y', ')')) and (next_token.isalpha() or next_token == '('):
+                if (curr_token.replace('.', '', 1).isdigit() or curr_token in ('x', 'y', ')','pi','e')) and (next_token.isalpha() or next_token in ('x', 'y','(','pi','e')):
                     final_tokens.append('*')
 
         return final_tokens
