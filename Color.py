@@ -5,6 +5,7 @@ from Equation import Equation
 class Color:
   """
   A wrapper class that maps values to colors
+  Improvements: changing the output for nan/invalid
   """
   red: Equation
   green: Equation
