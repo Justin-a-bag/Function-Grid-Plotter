@@ -54,7 +54,9 @@ class Equation:
 
                 # Clean up: remove the leading backslash because we don't need it
                 unit = unit.lstrip('\\')
-                tokens.append(unit)
+                #allows for input of \left( and \right)
+                if unit != 'left' and unit != 'right':
+                    tokens.append(unit)
 
             # 4. Handle Single Symbols (+, -, *, /, ^, (, ))
             # if it sees a symbol immediately turn it into a token
@@ -99,11 +101,13 @@ class Equation:
         PRECEDENCE = {
             '+': (1, 2), '-': (1, 2),
             '*': (2, 2), '/': (2, 2),
-            '^': (3, 2),
+            '^': (3, 2), '%': (2, 2),
             'sin': (4, 1), 'cos': (4, 1), 'tan': (4, 1), 'sec': (4, 1), 'csc': (4, 1), 'cot': (4, 1),
             'arcsin': (4, 1), 'arccos': (4, 1), 'arctan': (4, 1), 'arcsec': (4, 1), 'arccsc': (4, 1), 'arccot': (4, 1),
+            'sinh': (4, 1), 'cosh': (4, 1), 'tanh': (4, 1), 'sech': (4, 1), 'csch': (4, 1), 'coth': (4, 1),
+            'arcsinh': (4, 1), 'arccosh': (4, 1), 'arctanh': (4, 1), 'arcsech': (4, 1), 'arccsch': (4, 1), 'arccoth': (4, 1),
             'log': (4, 2), 'ln': (4, 1),
-            'sqrt': (4, 1), 
+            'sqrt': (4, 1), 'abs': (4, 1),
             'pi': (5, 0), 'e': (5, 0)
 
         }
@@ -195,7 +199,9 @@ class Equation:
     def evaluate(self, x: float, y: float) -> float:
         # this is the tree traversal step; the entire thing should return a float
         # evaluate the trees on the upper levels then evaluate this bottom node you get the point
-        return self.tree.evaluate(x, y)
+        #eliminates possibility of returning a complex value
+        result=self.tree.evaluate(x, y) 
+        return result if type(result)!='complex' else nan
     #returns size of the tree (number of nodes)
     def size(self):
         return self.tree.size()
@@ -227,8 +233,12 @@ class Node:
 
 
         #Every time you add a function to PRECEDENCE add its implementation down here
+        #base cases
         if isinstance(self.op, float):
             return float(self.op)
+        #this is a surprise tool that will help us later
+        if isinstance(self.op, complex):
+            return complex(self.op)
         if self.op == '':
             return 0.0
         if self.op == 'x':
@@ -239,6 +249,7 @@ class Node:
             return math.pi
         if self.op == 'e':
             return math.e
+        #simple operations
         if self.op == '+':
             return vals[0] + vals[1]
         if self.op == '-' or self.op == 'frac':
@@ -247,9 +258,13 @@ class Node:
             return vals[0] * vals[1]
         if self.op == '/':
             return vals[0] / vals[1] if vals[1] != 0 else 'nan'
+        #ive decided that we will allow complex values when returning this thing because i'm lazy
         if self.op == '^':
             return vals[0] ** vals[1]
-        
+        if self.op == '%':
+            return vals[0] % vals[1] if vals[1]>0 else 'nan'
+
+        #unrestricted trig
         if self.op == 'sin':
             return math.sin(vals[0])
         if self.op == 'cos':
@@ -259,6 +274,7 @@ class Node:
         if self.op == 'arccot':
             return math.pi/2-math.atan(vals[0])
 
+        #trig with bad values
         if self.op == 'tan':
             return math.tan(math.pi/2-vals[0]) if math.cos(vals[0])!=0.0 else 'nan'
         if self.op == 'cot':
@@ -275,6 +291,7 @@ class Node:
             return math.acos(1/vals[0]) if x**2>=1 else 'nan'
         if self.op == 'arccsc':
             return math.asin(1/vals[0]) if x**2>=1 else 'nan'
+
         
         if self.op == 'ln':
             return math.log(vals[0])if vals[0]>0 else 'nan'
@@ -282,6 +299,8 @@ class Node:
             return math.log(vals[1],vals[0])if vals[0]>0 else 'nan'
         if self.op == 'sqrt':
             return math.sqrt(vals[0]) if vals[0]>=0 else 'nan'
+                if self.op == 'abs':
+            return -vals[0] if vals[0]>0 else vals[0]
         # Add other things after here
         # grammar isn't too important in this step since we can make the grammar whatever we want
         return 'invalid'
