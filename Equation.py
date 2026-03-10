@@ -102,7 +102,7 @@ class Equation:
             '^': (3, 2),
             'sin': (4, 1), 'cos': (4, 1), 'tan': (4, 1), 'sec': (4, 1), 'csc': (4, 1), 'cot': (4, 1),
             'arcsin': (4, 1), 'arccos': (4, 1), 'arctan': (4, 1), 'arcsec': (4, 1), 'arccsc': (4, 1), 'arccot': (4, 1),
-            'log': (4, 1), 'ln': (4, 1),
+            'log': (4, 2), 'ln': (4, 1),
             'sqrt': (4, 1), 
             'pi': (5, 0), 'e': (5, 0)
 
@@ -254,13 +254,32 @@ class Node:
             return math.sin(vals[0])
         if self.op == 'cos':
             return math.cos(vals[0])
-        
         if self.op == 'arctan':
             return math.atan(vals[0])
         if self.op == 'arccot':
             return math.pi/2-math.atan(vals[0])
+
+        if self.op == 'tan':
+            return math.tan(math.pi/2-vals[0]) if math.cos(vals[0])!=0.0 else 'nan'
+        if self.op == 'cot':
+            return math.tan(vals[0]) if math.sin(vals[0])!=0.0 else 'nan'
+        if self.op == 'csc':
+            return 1/math.sin(vals[0]) if math.sin(vals[0])!=0.0 else 'nan'
+        if self.op == 'sec':
+            return 1/math.cos(vals[0]) if math.cos(vals[0])!=0.0 else 'nan'
+        if self.op == 'arcsin':
+            return math.asin(vals[0]) if x**2<=1 else 'nan'
+        if self.op == 'arccos':
+            return math.acos(vals[0]) if x**2<=1 else 'nan'
+        if self.op == 'arcsec':
+            return math.acos(1/vals[0]) if x**2>=1 else 'nan'
+        if self.op == 'arccsc':
+            return math.asin(1/vals[0]) if x**2>=1 else 'nan'
+        
         if self.op == 'ln':
             return math.log(vals[0])if vals[0]>0 else 'nan'
+        if self.op == 'log':
+            return math.log(vals[1],vals[0])if vals[0]>0 else 'nan'
         if self.op == 'sqrt':
             return math.sqrt(vals[0]) if vals[0]>=0 else 'nan'
         # Add other things after here
