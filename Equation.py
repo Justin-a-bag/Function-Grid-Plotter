@@ -103,7 +103,8 @@ class Equation:
             'sin': (4, 1), 'cos': (4, 1), 'tan': (4, 1), 'sec': (4, 1), 'csc': (4, 1), 'cot': (4, 1),
             'arcsin': (4, 1), 'arccos': (4, 1), 'arctan': (4, 1), 'arcsec': (4, 1), 'arccsc': (4, 1), 'arccot': (4, 1),
             'log': (4, 1), 'ln': (4, 1),
-            'sqrt': (4, 1)
+            'sqrt': (4, 1), 
+            'pi': (5, 0), 'e': (5, 0)
 
         }
         REPLACEABLE = {
@@ -234,6 +235,10 @@ class Node:
             return x
         if self.op == 'y':
             return y
+        if self.op == 'pi':
+            return math.pi
+        if self.op == 'e':
+            return math.e
         if self.op == '+':
             return vals[0] + vals[1]
         if self.op == '-' or self.op == 'frac':
