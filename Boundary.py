@@ -5,6 +5,7 @@ from Equation import Equation
 class Boundary:
   """
   A wrapper class that maps values to colors
+  Improvements: can allow for the input of 2 functions to compare values between them (memory saving and maybe time saving?)
   """
   bounder: Equation
   checkSmaller: bool
