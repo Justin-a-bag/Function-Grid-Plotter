@@ -6,6 +6,7 @@ class Boundary:
   """
   A wrapper class that maps values to colors
   Improvements: can allow for the input of 2 functions to compare values between them (memory saving and maybe time saving?)
+  Alterations for inclusive/exclusive check; restricting to a line
   """
   bounder: Equation
   checkSmaller: bool
@@ -16,7 +17,6 @@ class Boundary:
   def inBounds(self,x:float,y:float)->bool:
     """
     returns whether or not the x and y values are in bounds as specified by the boundary provided earlier
-    yeah idk guys it does what it says
     """
     #i think the code is pretty readable just like look at it ig
     squarevalue=self.bounder.evaluate(x,y)
