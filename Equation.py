@@ -102,7 +102,7 @@ class Equation:
             '+': (1, 2), '-': (1, 2),
             '*': (2, 2), '/': (2, 2),
             '^': (3, 2), '%': (2, 2),
-            'exp': (4, 1),
+            'exp': (4, 1),'frac': (2, 2),
             'sin': (4, 1), 'cos': (4, 1), 'tan': (4, 1), 'sec': (4, 1), 'csc': (4, 1), 'cot': (4, 1),
             'arcsin': (4, 1), 'arccos': (4, 1), 'arctan': (4, 1), 'arcsec': (4, 1), 'arccsc': (4, 1), 'arccot': (4, 1),
             'sinh': (4, 1), 'cosh': (4, 1), 'tanh': (4, 1), 'sech': (4, 1), 'csch': (4, 1), 'coth': (4, 1),
@@ -180,6 +180,10 @@ class Equation:
                 while (operator_stack and operator_stack[-1] != '(' and PRECEDENCE[operator_stack[-1]][0] >=
                        PRECEDENCE[token][0]):
                     apply_operator()
+                #add the operator to the operator stack
+                #we do this because functions are in prefix (polish) notation (+ a b) rather than infix notation (a + b)
+                #so we need to get all the functions first
+                #in theory this means we don't even need brackets to declare a function
                 operator_stack.append(token)
                 
             elif token in REPLACEABLE:
@@ -253,6 +257,7 @@ class Node:
             return math.pi
         if self.op == 'e':
             return math.e
+            
         #simple operations
         if self.op == '+':
             return vals[0] + vals[1]
@@ -267,10 +272,21 @@ class Node:
             return vals[0] ** vals[1]
         if self.op == '%':
             return vals[0] % vals[1] if vals[1]>0 else 'nan'
-
+            
+        #variations on transcendentals
         if self.op == 'exp':
             return math.e**vals[0]
-
+        if self.op == 'frac':
+            return vals[0]/vals[1] if vals[1]!=0 else 'nan'
+        if self.op == 'ln':
+            return math.log(vals[0]) if vals[0]>0 else 'nan'
+        if self.op == 'log':
+            return math.log(vals[1],vals[0]) if vals[0]>0 else 'nan'
+        if self.op == 'sqrt':
+            return math.sqrt(vals[0]) if vals[0]>=0 else 'nan'
+        if self.op == 'cbrt':
+            return vals[0]**(1/3)
+            
         #unrestricted trig
         if self.op == 'sin':
             return math.sin(vals[0])
@@ -327,16 +343,6 @@ class Node:
         if self.op == 'arccoth':
             return math.atanh(1/vals[0]) if x**2>1 else 'nan'
 
-        #variations on transcendentals
-        if self.op == 'ln':
-            return math.log(vals[0]) if vals[0]>0 else 'nan'
-        if self.op == 'log':
-            return math.log(vals[1],vals[0]) if vals[0]>0 else 'nan'
-        if self.op == 'sqrt':
-            return math.sqrt(vals[0]) if vals[0]>=0 else 'nan'
-        if self.op == 'cbrt':
-            return vals[0]**(1/3)
-
         #number theory
         if self.op == 'abs':
             return -vals[0] if vals[0]>0 else vals[0]
@@ -354,7 +360,6 @@ class Node:
             return max(vals[0], vals[1])
         if self.op == 'clamp':
             return min(max(vals[0], vals[1]),vals[2])
-        
         
         # Add other things after here
         # grammar isn't too important in this step since we can make the grammar whatever we want
