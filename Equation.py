@@ -156,7 +156,6 @@ class Equation:
                 output_stack.append(Node(op, children))
             except IndexError:
                 potato=True
-                utput_stack.append(Node('invalid', []))
 
         for token in tokenized_input:
             #remember, all children go in the output stack pile
