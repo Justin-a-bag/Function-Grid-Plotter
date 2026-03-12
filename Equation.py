@@ -139,21 +139,24 @@ class Equation:
         #i am describing everything like i'm an israeli soldier in Gaza
         def apply_operator():
             """Pops an operator and its required children to create a sub-tree."""
-            
-            op = operator_stack.pop() 
-            num_args = PRECEDENCE[op][1]
-
-            # Kill children in reverse order starting with the youngest (since stacks are Last-In-First-Out)
-            
-            children = []
-            for _ in range(num_args):
-                #take the children from their old family, put them in a new family
-                children.append(output_stack.pop())
-            #make it so that the eldest is arranged first, since it's easier to abduct them younger
-            children.reverse()
-
-            # Create a new family and put it back on the output to fend for themselves
-            output_stack.append(Node(op, children))
+            try:
+                op = operator_stack.pop() 
+                num_args = PRECEDENCE[op][1]
+    
+                # Kill children in reverse order starting with the youngest (since stacks are Last-In-First-Out)
+                
+                children = []
+                for _ in range(num_args):
+                    #take the children from their old family, put them in a new family
+                    children.append(output_stack.pop())
+                #make it so that the eldest is arranged first, since it's easier to abduct them younger
+                children.reverse()
+    
+                # Create a new family and put it back on the output to fend for themselves
+                output_stack.append(Node(op, children))
+            except IndexError:
+                potato=True
+                utput_stack.append(Node('invalid', []))
 
         for token in tokenized_input:
             #remember, all children go in the output stack pile
@@ -199,16 +202,22 @@ class Equation:
                        PRECEDENCE[REPLACEABLE[token]][0]):
                     apply_operator()
                 operator_stack.append(REPLACEABLE[token])
-                
+            if potato==True:
+                self.tree = Node("potato",[])
+                return
 
             # STEP 5: Final Cleanup
             #kill any surviving residents
             # Solve any remaining operators in the stack
         while operator_stack:
             apply_operator()
+            if potato==True:
+                self.tree = Node("potato",[])
+                return
 
         # The very last item on the output stack is the Root of our tree
         self.tree = output_stack[0]
+        
 
     def evaluate(self, x: float, y: float) -> float:
         # this is the tree traversal step; the entire thing should return a float
