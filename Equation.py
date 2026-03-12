@@ -22,7 +22,7 @@ class Equation:
         # when taking in latex, convert all the latex stuff into standard
         # \u and \x are danger characters so be careful
         REPLACEMENTS = {
-            '{':'(', ')':')',' ':'', '(-': '(0-', 
+            '{':'(', '}':')',' ':'', '(-': '(0-', 
             '\a':'`a', '\b':'`b', '\f':'`f', '\n':'`n', '\r':'`r', '\t':'`t', '\v':'`v'
         }
         equation = eq
