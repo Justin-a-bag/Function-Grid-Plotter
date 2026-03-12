@@ -21,8 +21,13 @@ class Equation:
         i = 0
         # when taking in latex, convert all the latex stuff into standard
         # also i didn't account stuff that takes in multiple inputs in separate brackets so we might need to adjust this tokenizer
-
-        equation = eq.replace('{', '(').replace('}', ')').replace(' ', '').replace('(-','(0-')
+        REPLACEMENTS = {
+            '{':'(', ')':')',' ':'', '(-': '(0-', 
+            '\a':'`a', '\b':'`b', '\f':'`f', '\n':'`n', '\r':'`r', '\t':'`t', '\u':'`u', '\v':'`v', '\x':'`x'
+        }
+        equation = eq
+        for x in REPLACEMENTS:
+            equation = equation.replace(x, REPLACEMENTS[x])
         if equation.startswith('-'):
             equation = '0' + equation
         while i < len(equation):
