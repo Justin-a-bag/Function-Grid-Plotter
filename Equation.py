@@ -20,10 +20,10 @@ class Equation:
         tokens = []
         i = 0
         # when taking in latex, convert all the latex stuff into standard
-        # also i didn't account stuff that takes in multiple inputs in separate brackets so we might need to adjust this tokenizer
+        # \u and \x are danger characters so be careful
         REPLACEMENTS = {
             '{':'(', ')':')',' ':'', '(-': '(0-', 
-            '\a':'`a', '\b':'`b', '\f':'`f', '\n':'`n', '\r':'`r', '\t':'`t', '\u':'`u', '\v':'`v', '\x':'`x'
+            '\a':'`a', '\b':'`b', '\f':'`f', '\n':'`n', '\r':'`r', '\t':'`t', '\v':'`v'
         }
         equation = eq
         for x in REPLACEMENTS:
@@ -123,7 +123,7 @@ class Equation:
         REPLACEABLE = {
             'cdot':'*', 'times':'*'
         }
-
+        potato=False
         output_stack = []  # This stores our completed Tree Nodes
         operator_stack = []  # This stores operators that are waiting for their children
 
@@ -139,7 +139,8 @@ class Equation:
         #i am describing everything like i'm an israeli soldier in Gaza
         def apply_operator():
             """Pops an operator and its required children to create a sub-tree."""
-            op = operator_stack.pop()
+            
+            op = operator_stack.pop() 
             num_args = PRECEDENCE[op][1]
 
             # Kill children in reverse order starting with the youngest (since stacks are Last-In-First-Out)
