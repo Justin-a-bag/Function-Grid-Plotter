@@ -102,12 +102,16 @@ class Equation:
             '+': (1, 2), '-': (1, 2),
             '*': (2, 2), '/': (2, 2),
             '^': (3, 2), '%': (2, 2),
+            'exp': (4, 1),
             'sin': (4, 1), 'cos': (4, 1), 'tan': (4, 1), 'sec': (4, 1), 'csc': (4, 1), 'cot': (4, 1),
             'arcsin': (4, 1), 'arccos': (4, 1), 'arctan': (4, 1), 'arcsec': (4, 1), 'arccsc': (4, 1), 'arccot': (4, 1),
             'sinh': (4, 1), 'cosh': (4, 1), 'tanh': (4, 1), 'sech': (4, 1), 'csch': (4, 1), 'coth': (4, 1),
             'arcsinh': (4, 1), 'arccosh': (4, 1), 'arctanh': (4, 1), 'arcsech': (4, 1), 'arccsch': (4, 1), 'arccoth': (4, 1),
             'log': (4, 2), 'ln': (4, 1),
-            'sqrt': (4, 1), 'abs': (4, 1),
+            'sqrt': (4, 1), 'cbrt': (4, 1),
+            'abs': (4, 1), 'sign': (4, 1),
+            'floor': (4, 1), 'ceil': (4, 1), 'round': (4, 1),
+            'min': (4, 2), 'max': (4, 2), 'clamp': (4, 3),
             'pi': (5, 0), 'e': (5, 0)
 
         }
@@ -201,7 +205,7 @@ class Equation:
         # evaluate the trees on the upper levels then evaluate this bottom node you get the point
         #eliminates possibility of returning a complex value
         result=self.tree.evaluate(x, y) 
-        return result if type(result)!='complex' else nan
+        return result if type(result)!='complex' else 'nan'
     #returns size of the tree (number of nodes)
     def size(self):
         return self.tree.size()
@@ -264,6 +268,9 @@ class Node:
         if self.op == '%':
             return vals[0] % vals[1] if vals[1]>0 else 'nan'
 
+        if self.op == 'exp':
+            return math.e**vals[0]
+
         #unrestricted trig
         if self.op == 'sin':
             return math.sin(vals[0])
@@ -275,10 +282,10 @@ class Node:
             return math.pi/2-math.atan(vals[0])
 
         #trig with bad values
-        if self.op == 'tan':
-            return math.tan(math.pi/2-vals[0]) if math.cos(vals[0])!=0.0 else 'nan'
         if self.op == 'cot':
-            return math.tan(vals[0]) if math.sin(vals[0])!=0.0 else 'nan'
+            return math.tan(math.pi/2-vals[0]) if math.sin(vals[0])!=0.0 else 'nan'
+        if self.op == 'tan':
+            return math.tan(vals[0]) if math.cos(vals[0])!=0.0 else 'nan'
         if self.op == 'csc':
             return 1/math.sin(vals[0]) if math.sin(vals[0])!=0.0 else 'nan'
         if self.op == 'sec':
@@ -292,15 +299,63 @@ class Node:
         if self.op == 'arccsc':
             return math.asin(1/vals[0]) if x**2>=1 else 'nan'
 
-        
+        #unrestricted hyperbolic trig
+        if self.op == 'sinh':
+            return math.sinh(vals[0])
+        if self.op == 'cosh':
+            return math.cosh(vals[0])
+        if self.op == 'tanh':
+            return math.tanh(vals[0])
+        if self.op == 'sech':
+            return 1/math.cosh(vals[0])
+        if self.op == 'arcsinh':
+            return math.asinh(vals[0])
+
+        #hyperbolic trig with bad values
+        if self.op == 'csch':
+            return 1/math.sin(vals[0]) if vals[0]!=0.0 else 'nan'
+        if self.op == 'coth':
+            return 1/math.tan(math.pi/2) if vals[0]!=0.0 else 'nan'
+        if self.op == 'arccosh':
+            return math.acosh(vals[0]) if x>=1 else 'nan'
+        if self.op == 'arcsech':
+            return math.acosh(1/vals[0]) if x>1 else 'nan'
+        if self.op == 'arccsc':
+            return math.asin(1/vals[0]) if x**2!=1 else 'nan'
+        if self.op == 'arctanh':
+            return math.atanh(vals[0]) if x**2<1 else 'nan'
+        if self.op == 'arccoth':
+            return math.atanh(1/vals[0]) if x**2>1 else 'nan'
+
+        #variations on transcendentals
         if self.op == 'ln':
-            return math.log(vals[0])if vals[0]>0 else 'nan'
+            return math.log(vals[0]) if vals[0]>0 else 'nan'
         if self.op == 'log':
-            return math.log(vals[1],vals[0])if vals[0]>0 else 'nan'
+            return math.log(vals[1],vals[0]) if vals[0]>0 else 'nan'
         if self.op == 'sqrt':
             return math.sqrt(vals[0]) if vals[0]>=0 else 'nan'
-                if self.op == 'abs':
+        if self.op == 'cbrt':
+            return vals[0]**(1/3)
+
+        #number theory
+        if self.op == 'abs':
             return -vals[0] if vals[0]>0 else vals[0]
+        if self.op == 'sign':
+            return -1 if vals[0]<0 else 1 if vals[0]>0 else 0
+        if self.op == 'floor':
+            return float(math.floor(vals[0]))
+        if self.op == 'ceil':
+            return float(math.ceil(vals[0]))
+        if self.op == 'round':
+            return float(round(vals[0]))
+        if self.op == 'min':
+            return min(vals[0], vals[1])
+        if self.op == 'max':
+            return max(vals[0], vals[1])
+        if self.op == 'clamp':
+            return min(max(vals[0], vals[1]),vals[2])
+        
+        
         # Add other things after here
         # grammar isn't too important in this step since we can make the grammar whatever we want
         return 'invalid'
