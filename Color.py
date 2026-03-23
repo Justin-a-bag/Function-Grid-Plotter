@@ -28,7 +28,7 @@ class Color:
 
     if any(c==d for c in [rval,gval,bval] for d in ['invalid','nan']):
         #THIS SHOULD RETURN A BASE NULL VALUE
-        return (0,0,0)
+        return (-1,-1,-1)
     if rval<0:
         rval=0
     if rval>255:
