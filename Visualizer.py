@@ -50,7 +50,7 @@ if __name__ == "__main__":
     # --- 1. PYGAME SETUP ---
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("Jingwei Render Engine")
+    pygame.display.set_caption("Render Engine")
 
     # --- 2. MATH SETUP ---
     # Create the equation. Try changing this to "sin(x) + cos(y)"!
