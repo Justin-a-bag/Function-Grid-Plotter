@@ -1,11 +1,11 @@
-from __future__ import annotations 
+from __future__ import annotations
 import math
 
 from Equation import Equation
+
 class Color:
   """
   A wrapper class that maps values to colors
-  Improvements: changing the output for nan/invalid
   """
   red: Equation
   green: Equation
@@ -20,20 +20,32 @@ class Color:
     returns the color tuple that corresponds to the color at any specific location
     remember that color is a tuple of 3 integers representing rgb values
     since color drawing uses integers, cast the value to an integer (surely a 1 point drop in color doesn't actually matter riiigghhhttt?)
-    Hey guys uh if you're reading this idk how we should scale the color values 
+    Hey guys uh if you're reading this idk how we should scale the color values
     can you guys decide if we should just drop immediately to 0/255 or use a 1-1 mapping system?
     also if we should check for absolute max/min values and scale values accordingly?
     """
-    #doing it this way since we need to check the values of stuff
     rval,gval,bval=self.red.evaluate(zval,0),self.green.evaluate(zval,0),self.blue.evaluate(zval,0)
 
-    #yeah fuck you for wanting to read the code
     if any(c==d for c in [rval,gval,bval] for d in ['invalid','nan']):
         #THIS SHOULD RETURN A BASE NULL VALUE
-        #i'm using black as the base value but you can choose anything 
-        #(i will note some color schemes don't allow black but thats the point lowkey)
         return (0,0,0)
-    #final casting
-    #fuck marry kill r value, g value, b value?
+    if rval<0:
+        rval=0
+    if rval>255:
+        rval=255
+    if gval<0:
+        gval=0
+    if gval>255:
+        gval=255
+    if bval<0:
+        bval=0
+    if bval>255:
+        bval=255
     return (int(rval),int(gval),int(bval))
 
+if __name__=="__main__":
+    r=Equation("4+x+y")
+    g=Equation("2*x-y")
+    b=Equation("3/x+5+3+y")
+    newcolor=Color()
+    print(newcolor.getColorTuple(150))
