@@ -1,4 +1,4 @@
-from __future__ import annotations 
+from __future__ import annotations
 import math
 
 from Equation import Equation
@@ -12,7 +12,7 @@ class Boundary:
   checkSmaller: bool
 
   def __init__(self, boundary = Equation("1"), checkSmaller=False):
-    self.boundary=boundary
+    self.bounder=boundary
     self.checkSmaller=checkSmaller
   def inBounds(self,x:float,y:float)->bool:
     """
@@ -25,5 +25,5 @@ class Boundary:
       return squarevalue>=0
     else:
       return squarevalue<=0
-      
-      
+
+
