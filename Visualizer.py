@@ -44,13 +44,13 @@ def render_grid(screen: pygame.Surface, drawFunc: Equation, color: Color, bounda
 
                 # 5. Draw it!
 
-                pygame.draw.rect(screen, squarecolor, (screen_x, screen_y, max(1,cell_w), max(1,cell_h)))
+                pygame.draw.rect(screen, squarecolor, (screen_x, screen_y, max(1.0,cell_w), max(1.0,cell_h)))
 
 if __name__ == "__main__":
     # --- 1. PYGAME SETUP ---
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("Jingwei Render Engine")
+    pygame.display.set_caption("Render Engine")
 
     # --- 2. MATH SETUP ---
     # Create the equation. Try changing this to "sin(x) + cos(y)"!
