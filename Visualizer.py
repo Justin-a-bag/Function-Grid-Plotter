@@ -43,8 +43,8 @@ def render_grid(screen: pygame.Surface, drawFunc: Equation, color: Color, bounda
                 screen_y = DRAW_MAX_Y - ((j + 1) * cell_h)
 
                 # 5. Draw it!
-
-                pygame.draw.rect(screen, squarecolor, (screen_x, screen_y, max(1.0, cell_w), max(1.0, cell_h)))
+                if squarecolor != (-1,-1,-1):
+                  pygame.draw.rect(screen, squarecolor, (screen_x, screen_y, max(1.0,cell_w), max(1.0,cell_h)))
 
 if __name__ == "__main__":
     # --- 1. PYGAME SETUP ---
