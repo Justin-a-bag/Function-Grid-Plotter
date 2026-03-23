@@ -65,7 +65,7 @@ if __name__ == "__main__":
 
     # Generate the coordinate grid (e.g., from -10 to 10)
     # Using a 100x100 resolution for the bare minimum test
-    GRID_RESOLUTION = 400
+    GRID_RESOLUTION = 100
     MATH_MIN, MATH_MAX = -15.0, 15.0
 
     # This creates a list of evenly spaced numbers from MATH_MIN to MATH_MAX
