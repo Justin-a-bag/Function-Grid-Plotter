@@ -361,7 +361,7 @@ class Node:
             return math.acosh(vals[0]) if x >= 1 else 'nan'
         if self.op == 'arcsech':
             return math.acosh(1 / vals[0]) if x > 1 else 'nan'
-        if self.op == 'arccsc':
+        if self.op == 'arccsch':
             return math.asin(1 / vals[0]) if x ** 2 != 1 else 'nan'
         if self.op == 'arctanh':
             return math.atanh(vals[0]) if x ** 2 < 1 else 'nan'
