@@ -93,8 +93,6 @@ def update_functions() -> None:
     for x in drawList:
         if x[0] in functionsDict and x[1] in colorsDict and x[2] in restrictionsDict:
             drawFinal.append((functionsDict[x[0]],colorsDict[x[1]],restrictionsDict[x[2]]))
-        
-
 
 def render_grid(screen: pygame.Surface, drawFunc: Equation, color: Color, boundary: Boundary, xpoints: list[float],
                 ypoints: list[float]):
@@ -105,28 +103,31 @@ def render_grid(screen: pygame.Surface, drawFunc: Equation, color: Color, bounda
     cell_w = (DRAW_MAX_X - DRAW_MIN_X) / len(xpoints)
     cell_h = (DRAW_MAX_Y - DRAW_MIN_Y) / len(ypoints)
 
+    #draw each square first
     for i in range(len(xpoints)):
         for j in range(len(ypoints)):
             math_x = xpoints[i]
             math_y = ypoints[j]
 
-            # 1. Check if the point is within the user's defined mathematical boundary
-            if boundary.inBounds(math_x, math_y):
+            #do this for every item in the list
+            for curFunc in drawFinal:
+                # 1. Check if the point is within the user's defined mathematical boundary
+                if curFunc[2].inBounds(math_x, math_y):
 
-                # 2. Evaluate the equation
-                z = drawFunc.evaluate(math_x, math_y)
+                    # 2. Evaluate the equation
+                    z = curFunc[0].evaluate(math_x, math_y)
 
-                # 3. Get the color from your Color class
-                squarecolor = color.getColorTuple(z)
+                    # 3. Get the color from your Color class
+                    squarecolor = curFunc[1].getColorTuple(z)
 
-                # 4. Calculate where this rectangle actually goes on the computer screen
-                screen_x = DRAW_MIN_X + i * cell_w
-                # Invert the Y axis so standard math (+y is up) matches Pygame (+y is down)
-                screen_y = DRAW_MAX_Y - ((j + 1) * cell_h)
+                    # 4. Calculate where this rectangle actually goes on the computer screen
+                    screen_x = DRAW_MIN_X + i * cell_w
+                    # Invert the Y axis so standard math (+y is up) matches Pygame (+y is down)
+                    screen_y = DRAW_MAX_Y - ((j + 1) * cell_h)
 
-                # 5. Draw it!
-                if squarecolor != (-1, -1, -1):
-                    pygame.draw.rect(screen, squarecolor, (screen_x, screen_y, max(1.0, cell_w), max(1.0, cell_h)))
+                    # 5. Draw it!
+                    if squarecolor != (-1, -1, -1):
+                        pygame.draw.rect(screen, squarecolor, (screen_x, screen_y, max(1.0, cell_w), max(1.0, cell_h)))
 
 
 def render_textboxes(scr: pygame.Surface, text_lst: list[tuple[Textbox, Equation]], t_index: int) -> None:
