@@ -122,7 +122,7 @@ def update_functions() -> None:
 
         if x[0] in functionsDict and x[1] in colorsDict and x[2] in restrictionsDict:
             drawFinal.append((functionsDict[x[0]],colorsDict[x[1]],restrictionsDict[x[2]]))
-    print(drawFinal)
+    
 def render_grid(screen: pygame.Surface, xpoints: list[float], ypoints: list[float]): #drawFunc: Equation, color: Color, boundary: Boundary,
     """
     Evaluates the equation at every math coordinate and draws the corresponding color block to the screen.
@@ -172,6 +172,16 @@ def render_textboxes(scr: pygame.Surface, text_lst: list[tuple[Textbox, Equation
             pygame.draw.rect(scr, INDENT_COLOR, (tb_rect.x + TB_INDT, tb_rect.y + TB_INDT,
                                                  tb_rect.width - (2 * TB_INDT), tb_rect.height - (2 * TB_INDT)))
 
+def calculate_render_size()->int:
+    numbers=0
+    for x in drawFinal:
+        a,b,c=x[0],x[1],x[2]
+        numbers+=a.size()
+        d,e,f=b.red,b.green,b.blue
+        numbers+=d.size()+e.size()+f.size()
+        numbers+=c.bounder.size()
+    return numbers
+
 
 if __name__ == "__main__":
     # --- 1. PYGAME SETUP ---
@@ -182,18 +192,10 @@ if __name__ == "__main__":
     # --- 2. MATH SETUP ---
     # Create the equation. Try changing this to "sin(x) + cos(y)"!
 
-    eq2 = Equation(
-        "arctan(2sin(-2x-y/8+cos(3y-x-sin(cos(sin( sin(x*y) + x )+x-y+arctan(y)))))+\frac{\left(x^{2}+\frac(y^2,14)+0\right)}{3}-100/(x^2+y^2)+2.71828^(-4-y))")  #
-    my_boundary = Boundary(Equation(
-        "arctan(2sin(-2x-y/8+cos(3y-x-sin(cos(sin( sin(x*y) + x )+x-y+arctan(y)))))+\frac{\left(x^{2}+\frac(y^2,14)+0\right)}{3}-100/(x^2+y^2)+2.71828^(-4-y))-1.45"),
-                           True)
-    my_boundary = Boundary()
 
     # Generate the coordinate grid (e.g., from -10 to 10)
     # Using a 100x100 resolution for the bare minimum test
 
-    update_functions()
-    print(drawFinal)
 
     GRID_RESOLUTION = 100
     MATH_MIN, MATH_MAX = -15.0, 15.0
@@ -207,10 +209,11 @@ if __name__ == "__main__":
     y_coords2 = [MATH_MIN + j * step for j in range(GRID_RESOLUTION)]
 
     # --- 3. RENDER ONCE ---
-    screen.fill((255, 255, 255))  # Fill background with black
+    update_functions()
+    screen.fill((255, 255, 255))  # Fill background with WHITE because we're RACIST
     print("Rendering grid...")
-    #renderingtime = GRID_RESOLUTION ** 2 * (eq.size() + r.size() + g.size() + b.size()) / 1000000
-    #print("estimated rendering time: " + str(renderingtime) + " seconds")
+    renderingtime = GRID_RESOLUTION ** 2 * (calculate_render_size()) / 1000000
+    print("estimated rendering time: " + str(renderingtime) + " seconds")
     print("Note: the power of your device will affect runtime speeds.")
 
     #render_grid(screen, eq2, my_color, my_boundary, x_coords, y_coords)
