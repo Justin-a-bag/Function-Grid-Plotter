@@ -212,7 +212,7 @@ class Equation:
                        PRECEDENCE[REPLACEABLE[token]][0]):
                     apply_operator()
                 operator_stack.append(REPLACEABLE[token])
-            if potato == True:
+            if potato:
                 self.tree = Node("potato", [])
                 return
 
@@ -221,7 +221,7 @@ class Equation:
             # Solve any remaining operators in the stack
         while operator_stack:
             apply_operator()
-            if potato == True:
+            if potato:
                 self.tree = Node("potato", [])
                 return
 

@@ -24,7 +24,7 @@ class Boundary:
         # i think the code is pretty readable just like look at it ig
         squarevalue = float(self.bounder.evaluate(x, y))
         # you guys can decide if we actually want an inclusive/exclusive check for squarevalue right now it's inclusive
-        if self.checkSmaller == False:
+        if not self.checkSmaller:
             return squarevalue >= 0
         else:
             return squarevalue <= 0
