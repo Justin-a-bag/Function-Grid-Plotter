@@ -11,270 +11,280 @@ from Boundary import Boundary
 WIDTH, HEIGHT = 1100, 800
 DRAW_MIN_X, DRAW_MAX_X = 300, WIDTH
 DRAW_MIN_Y, DRAW_MAX_Y = 0, HEIGHT
-TEXTBOX_Y = 30
+TEXTBOX_Y = 50  # Lowered slightly to fit tabs
 TEXTBOX_WIDTH, TEXTBOX_HEIGHT = 300, 50
-TEXTBOX_COLOR = (210, 210, 210)
-INDENT_COLOR = (TEXTBOX_COLOR[0]-30, TEXTBOX_COLOR[1]-30, TEXTBOX_COLOR[2]-30)
-TB_INDT = 5
+TEXTBOX_COLOR = (240, 240, 240)
+INDENT_COLOR = (200, 200, 200)
+TEXT_COLOR = (10, 10, 10)
 TABS_WIDTH, TABS_HEIGHT = 60, 50
 PANELS = ['Functions', 'Colours', 'Restrictions', 'Draw', 'Settings']
 current_panel = 'Functions'
 
-#Stores which functions are at what locations
-#grammar: ID, string
+# Global State
+functionsList = [
+        ("eq",
+         "arctan(2\sin\left(-2x-\frac{1}{8}y+\cos\left(3y-x-\sin\left(\cos\left(\sin\left(\sin\left(x*y\right)+x\right)\right)+x-y+arccot\left(x\right)\arctan\left(y\right)\right)\right)\right)+\frac{\left(x^{2}+\frac{y^{2}}{14}\right)}{3}-\left(\frac{100}{x^{2}+y^{2}}\right)+e^{-4-y})"),
+        ("r", "255((x-(cos(3.7(x+0.8))/3))/2.8+1.28)"),
+        ("g", "255(sin(1.5(x+pi/2))/2.8+0.5)"),
+        ("b", "255(e^(-(3(x+0.99))^2)/3-x/9+0.1)"),
+        ("rest", "1")
+    ]
 
-functionsList=[
-    ("eq","arctan(2\sin\left(-2x-\frac{1}{8}y+\cos\left(3y-x-\sin\left(\cos\left(\sin\left(\sin\left(x*y\right)+x\right)\right)+x-y+arccot\left(x\right)\arctan\left(y\right)\right)\right)\right)+\frac{\left(x^{2}+\frac{y^{2}}{14}\right)}{3}-\left(\frac{100}{x^{2}+y^{2}}\right)+e^{-4-y})"),
-    ("r","255((x-(cos(3.7(x+0.8))/3))/2.8+1.28)"),
-    ("g","255(sin(1.5(x+pi/2))/2.8+0.5)"),
-    ("b","255(e^(-(3(x+0.99))^2)/3-x/9+0.1)"),
-    ("rest","1")
-]
-#direct map of all usable functions
-#grammar: ID: list
-functionsDict={}
-#Stores which colors are at what locations
-#Grammar: ID, red, green, blue
-colorsList=[("my_color","r","g","b")]
-#direct map of all usable colors
-#Grammar: ID: color
-colorsDict={}
-#Stores which restrictions are at what locations
-#Grammar: ID, restriction, greaterorlessthan
-restrictionsList=[("rest","rest",False)]
-#direct map of all usable restrictions
-#grammar: ID, boundary class
-restrictionsDict={}
-#all inputted draw stuff
-#Grammar: function ID, color, restriction
-drawList=[("eq","my_color","rest")]
-#List of all functions to draw
-#A separate list outside of drawList to make sure everything is allowed
-drawFinal=[]
+functionsDict = {}
+colorsList = [("my_color", "r", "g", "b")]
+colorsDict = {}
+restrictionsList = [("rest", "rest", False)]
+restrictionsDict = {}
+drawList = [("eq", "my_color", "rest")]
+drawFinal = []
 
-# textbox object
-class Textbox:
+pygame.init()
+font = pygame.font.SysFont(None, 24)
+small_font = pygame.font.SysFont(None, 18)
+
+
+class DataEntryField:
     """
-    a textbox object to condense the information needed to create an iterable, mutable textbox
+    [UI] Replaces the Textbox. Acts as a State Machine for each list item.
     """
-    text: str
-    rect: pygame.Rect
-    color: pygame.Color
-    active = bool
 
-    def __init__(self, new_text: str, new_rect: pygame.Rect, new_color: pygame.Color):
-        self.text = new_text
-        self.rect = new_rect
-        self.color = new_color
+    def __init__(self, index: int, list_ref: list):
+        self.index = index
+        self.y = TEXTBOX_Y + (index * TEXTBOX_HEIGHT)
+        self.rect = pygame.Rect(0, self.y, TEXTBOX_WIDTH, TEXTBOX_HEIGHT)
 
-    def update_rect(self, new_y: int):
-        if self.rect.y != new_y:
-            self.rect.move(self.rect.x, new_y)
-
-    def update_text(self, passed_ev: pygame.event.Event):
-        if passed_ev.type == pygame.K_BACKSPACE:
-            self.text = self.text[:-1]
+        # Determine if this is a populated field or the "New" generation field at the bottom
+        if index < len(list_ref):
+            self.id_str = list_ref[index][0]
+            self.data_str = list_ref[index][1]
         else:
-            self.text += passed_ev.unicode
+            self.id_str = ""
+            self.data_str = ""
+
+        # [UI] Backups for when the user clicks off (Cancels)
+        self.backup_id = self.id_str
+        self.backup_data = self.data_str
+
+        # State flags
+        self.editing_id = False
+        self.editing_data = False
+
+        # Sub-rectangles for hit-testing
+        # Error flag circle will be drawn around x=15, y=self.y+25
+        self.id_rect = pygame.Rect(30, self.y + 10, 50, 30)
+        self.data_rect = pygame.Rect(85, self.y + 10, 150, 30)
+        self.btn_enter = pygame.Rect(240, self.y + 10, 50, 30)
+
+    def draw(self, surface: pygame.Surface):
+        # Draw background
+        is_active = self.editing_id or self.editing_data
+        bg_color = INDENT_COLOR if is_active else TEXTBOX_COLOR
+        pygame.draw.rect(surface, bg_color, self.rect)
+        pygame.draw.rect(surface, (150, 150, 150), self.rect, 1)  # Border
+
+        # 1. Error Flagging (Placeholder)
+        # TODO: Check 'functionsDict[self.id_str]' for invalid/potato nodes here to change color
+        flag_color = (200, 50, 50) if not self.id_str else (50, 200, 50)
+        pygame.draw.circle(surface, flag_color, (15, self.y + 25), 6)
+
+        # 2. Draw ID Field
+        pygame.draw.rect(surface, (255, 255, 255) if self.editing_id else bg_color, self.id_rect)
+        id_surf = font.render(self.id_str, True, TEXT_COLOR)
+        surface.blit(id_surf, (self.id_rect.x + 5, self.id_rect.y + 7))
+
+        # 3. Draw Data Field (With Scrolling/Clipping)
+        pygame.draw.rect(surface, (255, 255, 255) if self.editing_data else bg_color, self.data_rect)
+
+        # [UI] ast_to_string logic: if NOT editing, show the formatted AST string
+        display_str = self.data_str
+        if not is_active and self.id_str in functionsDict:
+            try:
+                # Assuming Equation has this method. If it fails, it defaults to raw string.
+                display_str = functionsDict[self.id_str].ast_to_string()
+            except AttributeError:
+                pass
+
+        data_surf = font.render(display_str, True, TEXT_COLOR)
+
+        # [UI] Scroll through text entry field natively via subsurface clipping
+        clip_area = pygame.Rect(0, 0, self.data_rect.width - 5, self.data_rect.height)
+        # If text is longer than the box, anchor it to the right side while typing
+        if data_surf.get_width() > clip_area.width and is_active:
+            clip_area.x = data_surf.get_width() - clip_area.width
+
+        surface.blit(data_surf, (self.data_rect.x + 5, self.data_rect.y + 7), clip_area)
+
+        # 4. Draw Confirm "Enter" Button
+        if is_active:
+            pygame.draw.rect(surface, (100, 200, 100), self.btn_enter)
+            btn_txt = small_font.render("ENTER", True, (0, 0, 0))
+            surface.blit(btn_txt, (self.btn_enter.x + 5, self.btn_enter.y + 10))
+
+    def handle_click(self, mouse_pos) -> bool:
+        """Returns True if the 'Enter' button was clicked and confirmed."""
+        if self.id_rect.collidepoint(mouse_pos):
+            self.editing_id = True
+            self.editing_data = False
+        elif self.data_rect.collidepoint(mouse_pos):
+            self.editing_data = True
+            self.editing_id = False
+        elif self.btn_enter.collidepoint(mouse_pos) and (self.editing_id or self.editing_data):
+            return self.confirm()
+        return False
+
+    def handle_keydown(self, event):
+        if self.editing_id:
+            if event.key == pygame.K_BACKSPACE:
+                self.id_str = self.id_str[:-1]
+            else:
+                self.id_str += event.unicode
+        elif self.editing_data:
+            if event.key == pygame.K_BACKSPACE:
+                self.data_str = self.data_str[:-1]
+            else:
+                self.data_str += event.unicode
+
+    def cancel(self):
+        """[UI] Reverts the field to what it had originally without changing data."""
+        self.id_str = self.backup_id
+        self.data_str = self.backup_data
+        self.editing_id = False
+        self.editing_data = False
+
+    def confirm(self) -> bool:
+        """[UI] Changes list indices and triggers dict rebuild."""
+        global functionsList
+        if self.index < len(functionsList):
+            # Update existing
+            functionsList[self.index] = (self.id_str, self.data_str)
+        else:
+            # Add new if they actually typed something
+            if self.id_str.strip() != "":
+                functionsList.append((self.id_str, self.data_str))
+
+        self.backup_id = self.id_str
+        self.backup_data = self.data_str
+        self.editing_id = False
+        self.editing_data = False
+
+        update_functions()
+        return True  # Signals the main loop that we need to recalculate the math grid
+
 
 def update_functions() -> None:
-    """
-    takes the lists and makes sure that everything is working as intended
-    """
-    global functionsList
-    global functionsDict
-    global colorsList
-    global colorsDict
-    global restrictionsList
-    global restrictionsDict
-    global drawList
-    global drawFinal
-    functionsDict={}
+    global functionsDict, colorsDict, restrictionsDict, drawFinal
+    functionsDict.clear()
     for x in functionsList:
-        if ';' not in x[0]:
-            if x[0] not in functionsDict:
-            
-                functionTree=Equation(x[1])
-                #note: this implementation means that you can have bad functions
-                #this is accounted for in error checking but you will need to error flag check here
-                functionsDict[x[0]]=functionTree
+        if x[0] not in functionsDict:
+            functionsDict[x[0]] = Equation(x[1])
 
-        #else flag
-    colorsDict = {}
+    colorsDict.clear()
     for x in colorsList:
-        if ';' not in x[0]:
-            if x[0] not in colorsDict:
-    
-                if all(x[c] in functionsDict for c in [1,2,3]):
-    
-                    newColor = Color(functionsDict[x[1]],functionsDict[x[2]],functionsDict[x[3]])
-                    # note: this implementation means that you can have bad colors with bad functions
-                    # this is accounted for in error checking but you will need to error flag check here
-                    colorsDict[x[0]] = newColor
-        #else flag
-    restrictionsDict = {}
-    for x in restrictionsList:
-        if ';' not in x[0]:
-            if x[0] not in restrictionsDict:
-                if x[1] in functionsDict:
-                    newRestriction = Boundary(functionsDict[x[1]],x[2])
-                    # note: this implementation means that you can have bad colors with bad functions
-                    # this is accounted for in error checking but you will need to error flag check here
-                    restrictionsDict[x[0]] = newRestriction
-        #else flag
-    drawFinal=[]
-    for x in drawList:
-        
-        if x[0] in functionsDict and x[1] in colorsDict and x[2] in restrictionsDict:
-            drawFinal.append((functionsDict[x[0]],colorsDict[x[1]],restrictionsDict[x[2]]))
-    
-def render_grid(screen: pygame.Surface, xpoints: list[float], ypoints: list[float]): #drawFunc: Equation, color: Color, boundary: Boundary,
-    """
-    Evaluates the equation at every math coordinate and draws the corresponding color block to the screen.
-    """
-    # Calculate how wide and tall each grid square should be on the screen
+        if x[0] not in colorsDict:
+            if all(x[c] in functionsDict for c in [1, 2, 3]):
+                colorsDict[x[0]] = Color(functionsDict[x[1]], functionsDict[x[2]], functionsDict[x[3]])
 
+    restrictionsDict.clear()
+    for x in restrictionsList:
+        if x[0] not in restrictionsDict:
+            if x[1] in functionsDict:
+                restrictionsDict[x[0]] = Boundary(functionsDict[x[1]], x[2])
+
+    drawFinal.clear()
+    for x in drawList:
+        if x[0] in functionsDict and x[1] in colorsDict and x[2] in restrictionsDict:
+            drawFinal.append((functionsDict[x[0]], colorsDict[x[1]], restrictionsDict[x[2]]))
+
+
+def render_grid(surface: pygame.Surface, xpoints: list[float], ypoints: list[float]):
+    surface.fill((255, 255, 255))
     cell_w = (DRAW_MAX_X - DRAW_MIN_X) / len(xpoints)
     cell_h = (DRAW_MAX_Y - DRAW_MIN_Y) / len(ypoints)
-    #draw each square first
+
     for i in range(len(xpoints)):
         for j in range(len(ypoints)):
             math_x = xpoints[i]
             math_y = ypoints[j]
-            #do this for every item in the list
             for curFunc in drawFinal:
-                # 1. Check if the point is within the user's defined mathematical boundary
                 if curFunc[2].inBounds(math_x, math_y):
-                    # 2. Evaluate the equation
                     z = curFunc[0].evaluate(math_x, math_y)
-
-                    # 3. Get the color from your Color class
                     squarecolor = curFunc[1].getColorTuple(z)
-
-                    # 4. Calculate where this rectangle actually goes on the computer screen
                     screen_x = DRAW_MIN_X + i * cell_w
-                    # Invert the Y axis so standard math (+y is up) matches Pygame (+y is down)
                     screen_y = DRAW_MAX_Y - ((j + 1) * cell_h)
 
-                    # 5. Draw it!
                     if squarecolor != (-1, -1, -1):
-                        pygame.draw.rect(screen, squarecolor, (screen_x, screen_y, max(1.0, cell_w), max(1.0, cell_h)))
+                        pygame.draw.rect(surface, squarecolor, (screen_x, screen_y, max(1.0, cell_w), max(1.0, cell_h)))
 
 
-def render_textboxes(scr: pygame.Surface, text_lst: list[tuple[Textbox, Equation]], t_index: int) -> None:
-    """
-    Updates the list and pygame rectangle objects associated to each string in the 2d list
-    """
-    # updates the rectangle
-    for i in range(len(text_lst)):
-        text_lst[i][0].update_rect(TEXTBOX_HEIGHT * i)
-        tb_rect = text_lst[i][0].rect
-        # draws every box
-        pygame.draw.rect(scr, TEXTBOX_COLOR, tb_rect)
-
-        # draws a darker inner box to distinguish which box is selected
-        if t_index == i:
-            pygame.draw.rect(scr, INDENT_COLOR, (tb_rect.x + TB_INDT, tb_rect.y + TB_INDT,
-                                                 tb_rect.width - (2 * TB_INDT), tb_rect.height - (2 * TB_INDT)))
-
-def calculate_render_size()->int:
-    numbers=0
-    for x in drawFinal:
-        a,b,c=x[0],x[1],x[2]
-        numbers+=a.size()
-        d,e,f=b.red,b.green,b.blue
-        numbers+=d.size()+e.size()+f.size()
-        numbers+=c.bounder.size()
-    return numbers
-
-
+# --- MAIN EXECUTION ---
 if __name__ == "__main__":
-    # --- 1. PYGAME SETUP ---
-    pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("Render Engine")
 
-    # --- 2. MATH SETUP ---
-    # Create the equation. Try changing this to "sin(x) + cos(y)"!
-
-
-    # Generate the coordinate grid (e.g., from -10 to 10)
-    # Using a 100x100 resolution for the bare minimum test
-
-
     GRID_RESOLUTION = 100
     MATH_MIN, MATH_MAX = -15.0, 15.0
-
-    # This creates a list of evenly spaced numbers from MATH_MIN to MATH_MAX
     step = (MATH_MAX - MATH_MIN) / GRID_RESOLUTION
     x_coords = [MATH_MIN + 1 + i * step for i in range(GRID_RESOLUTION)]
     y_coords = [MATH_MIN + j * step for j in range(GRID_RESOLUTION)]
 
-    x_coords2 = [MATH_MIN - 12 + i * step for i in range(GRID_RESOLUTION)]
-    y_coords2 = [MATH_MIN + j * step for j in range(GRID_RESOLUTION)]
+    # [UI] Generate a static surface to hold the math grid.
+    # This prevents the UI textboxes from lagging while the user types!
+    grid_surface = pygame.Surface((WIDTH, HEIGHT))
 
-    # --- 3. RENDER ONCE ---
     update_functions()
-    screen.fill((255, 255, 255))  # Fill background with WHITE because we're RACIST
-    print("Rendering grid...")
-    renderingtime = GRID_RESOLUTION ** 2 * (calculate_render_size()) / 1000000
-    print("estimated rendering time: " + str(renderingtime) + " seconds")
-    print("Note: the power of your device will affect runtime speeds.")
+    print("Initial render calculating...")
+    render_grid(grid_surface, x_coords, y_coords)
 
-    #render_grid(screen, eq2, my_color, my_boundary, x_coords, y_coords)
-    render_grid(screen, x_coords, y_coords)
-    # render_grid(screen, eq2, my_color, my_boundary, x_coords2, y_coords2)
-    # Pushes the drawing to the actual monitor
-    pygame.display.flip()
-
-    print("Done!")
-
-    # --- 4. MAIN EVENT LOOP ---
-    # This keeps the window open until you click the red 'X'
-
-    # a 2d list with each index containing a tuple (Textbox, Equation)
-    text_box_lst = list()
-
-    # index keeper to make sure that we know which box we are assigned to (will be assigned to the greatest index)
-    # text_index < len(text_box_lst)
-    text_index = 0
-
+    # Initialize UI Fields (Length of functionsList + 1 empty field for adding)
+    ui_fields = [DataEntryField(i, functionsList) for i in range(len(functionsList) + 1)]
 
     running = True
     while running:
+        # 1. ALWAYS BLIT THE CACHED MATH GRID FIRST
+        screen.blit(grid_surface, (0, 0))
+
+        # 2. DRAW SIDEBAR BACKGROUND OVER IT
+        pygame.draw.rect(screen, (220, 220, 220), (0, 0, TEXTBOX_WIDTH, HEIGHT))
+
+        # 3. HANDLE EVENTS
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            # keyboard events
-            if event.type == pygame.KEYDOWN:
-                # text_index has to be smaller than the list amount, will not go outside of it
-                if current_panel == 'Functions':
-                    if text_index < len(text_box_lst) and text_index >= 0:
-                        text_box_lst[text_index][0].update_text(event)  # acts as backspace
-                        render_textboxes(screen, text_box_lst, text_index)
 
-
-
-            # mouse click events
-            if event.type == pygame.mouse.get_pressed():
+            if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
 
-                if pygame.Rect(0,0,TABS_WIDTH*5, TABS_HEIGHT).collidepoint(mouse_pos):
-                    for i in range(5):
-                        if pygame.Rect(0,TABS_WIDTH*i, TABS_WIDTH, TABS_HEIGHT).collidepoint(mouse_pos):
-                            current_panel = PANELS[i]
-                    render_textboxes(screen, text_box_lst, text_index)
+                # Check if user clicked inside any UI field
+                clicked_any_field = False
+                for field in ui_fields:
+                    if field.rect.collidepoint(mouse_pos):
+                        clicked_any_field = True
+                        needs_redraw = field.handle_click(mouse_pos)
 
-                # in the text box areas
-                if pygame.Rect(0, TEXTBOX_Y, TEXTBOX_WIDTH, HEIGHT).collidepoint(mouse_pos):
-                    if current_panel == 'Functions':
-                        for i in range(len(text_box_lst)):
-                            if text_box_lst[i][0].rect.collidepoint(mouse_pos):
-                                text_index = i
-                        render_textboxes(screen, text_box_lst, text_index)
+                        # [UI] If confirmed, recalculate grid and regenerate UI list to add the next empty block
+                        if needs_redraw:
+                            print("Recalculating Math...")
+                            render_grid(grid_surface, x_coords, y_coords)
+                            ui_fields = [DataEntryField(i, functionsList) for i in range(len(functionsList) + 1)]
+
+                    else:
+                        # [UI] If they clicked another field, cancel the edit on this one
+                        if field.editing_id or field.editing_data:
+                            field.cancel()
+
+                # If they clicked entirely outside the UI sidebar, cancel everything
+                if not clicked_any_field:
+                    for field in ui_fields: field.cancel()
+
+            if event.type == pygame.KEYDOWN:
+                for field in ui_fields:
+                    field.handle_keydown(event)
+
+        # 4. DRAW ALL UI FIELDS
+        for field in ui_fields:
+            field.draw(screen)
 
         pygame.display.flip()
-
 
     pygame.quit()
     sys.exit()
