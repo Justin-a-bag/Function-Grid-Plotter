@@ -11,10 +11,14 @@ from Boundary import Boundary
 WIDTH, HEIGHT = 1100, 800
 DRAW_MIN_X, DRAW_MAX_X = 300, WIDTH
 DRAW_MIN_Y, DRAW_MAX_Y = 0, HEIGHT
+TEXTBOX_Y = 30
 TEXTBOX_WIDTH, TEXTBOX_HEIGHT = 300, 50
 TEXTBOX_COLOR = (210, 210, 210)
-INDENT_COLOR = (180, 180, 180)
+INDENT_COLOR = (TEXTBOX_COLOR[0]-30, TEXTBOX_COLOR[1]-30, TEXTBOX_COLOR[2]-30)
 TB_INDT = 5
+TABS_WIDTH, TABS_HEIGHT = 60, 50
+PANELS = ['Functions', 'Colours', 'Restrictions', 'Draw', 'Settings']
+current_panel = 'Functions'
 
 
 # textbox object
@@ -73,21 +77,24 @@ def render_grid(screen: pygame.Surface, drawFunc: Equation, color: Color, bounda
 
                 # 5. Draw it!
                 if squarecolor != (-1, -1, -1):
-                    pygame.draw.rect(screen, squarecolor, (screen_x, screen_y, max(1.0,cell_w), max(1.0,cell_h)))
+                    pygame.draw.rect(screen, squarecolor, (screen_x, screen_y, max(1.0, cell_w), max(1.0, cell_h)))
 
 
-def render_textboxes(scr: pygame.Surface, text_lst: list[Textbox], t_index : int) -> None:
+def render_textboxes(scr: pygame.Surface, text_lst: list[tuple[Textbox, Equation]], t_index: int) -> None:
     """
     Updates the list and pygame rectangle objects associated to each string in the 2d list
     """
     # updates the rectangle
     for i in range(len(text_lst)):
-        text_lst[i].update_rect(TEXTBOX_HEIGHT*i)
-        tb_box = text_lst[i].rect
-        pygame.draw.rect(scr, TEXTBOX_COLOR, text_lst[i].rect)
+        text_lst[i][0].update_rect(TEXTBOX_HEIGHT * i)
+        tb_rect = text_lst[i][0].rect
+        # draws every box
+        pygame.draw.rect(scr, TEXTBOX_COLOR, tb_rect)
+
+        # draws a darker inner box to distinguish which box is selected
         if t_index == i:
-            pygame.draw.rect(scr, INDENT_COLOR, (tb_box.x + TB_INDT, tb_box.y + TB_INDT,
-                                                    tb_box.width - (2 * TB_INDT), tb_box.height - (2 * TB_INDT)))
+            pygame.draw.rect(scr, INDENT_COLOR, (tb_rect.x + TB_INDT, tb_rect.y + TB_INDT,
+                                                 tb_rect.width - (2 * TB_INDT), tb_rect.height - (2 * TB_INDT)))
 
 
 if __name__ == "__main__":
@@ -98,13 +105,17 @@ if __name__ == "__main__":
 
     # --- 2. MATH SETUP ---
     # Create the equation. Try changing this to "sin(x) + cos(y)"!
-    eq = Equation("2\sin\left(-2x-\frac{1}{8}y+\cos\left(3y-x-\sin\left(\cos\left(\sin\left(\sin\left(x*y\right)+x\right)\right)+x-y+arccot\left(x\right)\arctan\left(y\right)\right)\right)\right)+\frac{\left(x^{2}+\frac{y^{2}}{14}\right)}{3}-\left(\frac{100}{x^{2}+y^{2}}\right)+e^{-4-y}")  #
+    eq = Equation(
+        "2\sin\left(-2x-\frac{1}{8}y+\cos\left(3y-x-\sin\left(\cos\left(\sin\left(\sin\left(x*y\right)+x\right)\right)+x-y+arccot\left(x\right)\arctan\left(y\right)\right)\right)\right)+\frac{\left(x^{2}+\frac{y^{2}}{14}\right)}{3}-\left(\frac{100}{x^{2}+y^{2}}\right)+e^{-4-y}")  #
     r = Equation("255((x-(cos(3.7(x+0.8))/3))/2.8+1.28)")
     g = Equation("255(sin(1.5(x+pi/2))/2.8+0.5)")
     b = Equation("255(e^(-(3(x+0.99))^2)/3-x/9+0.1)")
-    eq2 = Equation("arctan(2sin(-2x-y/8+cos(3y-x-sin(cos(sin( sin(x*y) + x )+x-y+arctan(y)))))+\frac{\left(x^{2}+\frac(y^2,14)+0\right)}{3}-100/(x^2+y^2)+2.71828^(-4-y))")  #
+    eq2 = Equation(
+        "arctan(2sin(-2x-y/8+cos(3y-x-sin(cos(sin( sin(x*y) + x )+x-y+arctan(y)))))+\frac{\left(x^{2}+\frac(y^2,14)+0\right)}{3}-100/(x^2+y^2)+2.71828^(-4-y))")  #
     my_color = Color(r, g, b)
-    my_boundary = Boundary(Equation("arctan(2sin(-2x-y/8+cos(3y-x-sin(cos(sin( sin(x*y) + x )+x-y+arctan(y)))))+\frac{\left(x^{2}+\frac(y^2,14)+0\right)}{3}-100/(x^2+y^2)+2.71828^(-4-y))-1.45"),True)
+    my_boundary = Boundary(Equation(
+        "arctan(2sin(-2x-y/8+cos(3y-x-sin(cos(sin( sin(x*y) + x )+x-y+arctan(y)))))+\frac{\left(x^{2}+\frac(y^2,14)+0\right)}{3}-100/(x^2+y^2)+2.71828^(-4-y))-1.45"),
+                           True)
     my_boundary = Boundary()
 
     # Generate the coordinate grid (e.g., from -10 to 10)
@@ -124,7 +135,7 @@ if __name__ == "__main__":
     screen.fill((255, 255, 255))  # Fill background with black
     print("Rendering grid...")
     renderingtime = GRID_RESOLUTION ** 2 * (eq.size() + r.size() + g.size() + b.size()) / 1000000
-    print("estimated rendering time: "+str(renderingtime)+" seconds")
+    print("estimated rendering time: " + str(renderingtime) + " seconds")
     print("Note: the power of your device will affect runtime speeds.")
 
     render_grid(screen, eq2, my_color, my_boundary, x_coords, y_coords)
@@ -134,17 +145,15 @@ if __name__ == "__main__":
 
     print("Done!")
 
-
     # --- 4. MAIN EVENT LOOP ---
     # This keeps the window open until you click the red 'X'
 
-    # a 2d list with each index containing [str, pygame.rect]
+    # a 2d list with each index containing a tuple (Textbox, Equation)
     text_box_lst = list()
 
     # index keeper to make sure that we know which box we are assigned to (will be assigned to the greatest index)
     # text_index < len(text_box_lst)
     text_index = 0
-
 
 
     running = True
@@ -155,13 +164,32 @@ if __name__ == "__main__":
             # keyboard events
             if event.type == pygame.KEYDOWN:
                 # text_index has to be smaller than the list amount, will not go outside of it
-                if text_index < len(text_box_lst) and text_index >= 0:
-                    text_box_lst[text_index].update_text(event)     # acts as backspace
-                    render_textboxes(screen, text_box_lst, text_index)
-                pygame.display.flip()
+                if current_panel == 'Functions':
+                    if text_index < len(text_box_lst) and text_index >= 0:
+                        text_box_lst[text_index][0].update_text(event)  # acts as backspace
+                        render_textboxes(screen, text_box_lst, text_index)
+
+
 
             # mouse click events
+            if event.type == pygame.mouse.get_pressed():
+                mouse_pos = pygame.mouse.get_pos()
 
+                if pygame.Rect(0,0,TABS_WIDTH*5, TABS_HEIGHT).collidepoint(mouse_pos):
+                    for i in range(5):
+                        if pygame.Rect(0,TABS_WIDTH*i, TABS_WIDTH, TABS_HEIGHT).collidepoint(mouse_pos):
+                            current_panel = PANELS[i]
+                    render_textboxes(screen, text_box_lst, text_index)
+
+                # in the text box areas
+                if pygame.Rect(0, TEXTBOX_Y, TEXTBOX_WIDTH, HEIGHT).collidepoint(mouse_pos):
+                    if current_panel == 'Functions':
+                        for i in range(len(text_box_lst)):
+                            if text_box_lst[i][0].rect.collidepoint(mouse_pos):
+                                text_index = i
+                        render_textboxes(screen, text_box_lst, text_index)
+
+        pygame.display.flip()
 
 
     pygame.quit()
