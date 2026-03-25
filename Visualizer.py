@@ -21,20 +21,35 @@ PANELS = ['Functions', 'Colours', 'Restrictions', 'Draw', 'Settings']
 current_panel = 'Functions'
 
 #Stores which functions are at what locations
-functionsList=[]
+#grammar: ID, string
+
+functionsList=[
+    ("eq","arctan(2\sin\left(-2x-\frac{1}{8}y+\cos\left(3y-x-\sin\left(\cos\left(\sin\left(\sin\left(x*y\right)+x\right)\right)+x-y+arccot\left(x\right)\arctan\left(y\right)\right)\right)\right)+\frac{\left(x^{2}+\frac{y^{2}}{14}\right)}{3}-\left(\frac{100}{x^{2}+y^{2}}\right)+e^{-4-y})"),
+    ("r","255((x-(cos(3.7(x+0.8))/3))/2.8+1.28)"),
+    ("g","255(sin(1.5(x+pi/2))/2.8+0.5)"),
+    ("b","255(e^(-(3(x+0.99))^2)/3-x/9+0.1)"),
+    ("rest","1")
+]
 #direct map of all usable functions
+#grammar: ID: list
 functionsDict={}
 #Stores which colors are at what locations
-colorsList=[]
+#Grammar: ID, red, green, blue
+colorsList=[("my_color","r","g","b")]
 #direct map of all usable colors
+#Grammar: ID: color
 colorsDict={}
 #Stores which restrictions are at what locations
-restrictionsList=[]
+#Grammar: ID, restriction, greaterorlessthan
+restrictionsList=[("rest","rest",False)]
 #direct map of all usable restrictions
+#grammar: ID, boundary class
 restrictionsDict={}
 #all inputted draw stuff
-drawList=[]
+#Grammar: function ID, color, restriction
+drawList=[("eq","my_color","rest")]
 #List of all functions to draw
+#A separate list outside of drawList to make sure everything is allowed
 drawFinal=[]
 
 # textbox object
@@ -66,17 +81,30 @@ def update_functions() -> None:
     """
     takes the lists and makes sure that everything is working as intended
     """
+    global functionsList
+    global functionsDict
+    global colorsList
+    global colorsDict
+    global restrictionsList
+    global restrictionsDict
+    global drawList
+    global drawFinal
     functionsDict={}
     for x in functionsList:
+
         if x[0] not in functionsDict:
+
             functionTree=Equation(x[1])
             #note: this implementation means that you can have bad functions
             #this is accounted for in error checking but you will need to error flag check here
             functionsDict[x[0]]=functionTree
     colorsDict = {}
     for x in colorsList:
+
         if x[0] not in colorsDict:
+
             if all(x[c] in functionsDict for c in [1,2,3]):
+
                 newColor = Color(functionsDict[x[1]],functionsDict[x[2]],functionsDict[x[3]])
                 # note: this implementation means that you can have bad colors with bad functions
                 # this is accounted for in error checking but you will need to error flag check here
@@ -91,29 +119,27 @@ def update_functions() -> None:
                 restrictionsDict[x[0]] = newRestriction
     drawFinal=[]
     for x in drawList:
+
         if x[0] in functionsDict and x[1] in colorsDict and x[2] in restrictionsDict:
             drawFinal.append((functionsDict[x[0]],colorsDict[x[1]],restrictionsDict[x[2]]))
-
-def render_grid(screen: pygame.Surface, drawFunc: Equation, color: Color, boundary: Boundary, xpoints: list[float],
-                ypoints: list[float]):
+    print(drawFinal)
+def render_grid(screen: pygame.Surface, xpoints: list[float], ypoints: list[float]): #drawFunc: Equation, color: Color, boundary: Boundary,
     """
     Evaluates the equation at every math coordinate and draws the corresponding color block to the screen.
     """
     # Calculate how wide and tall each grid square should be on the screen
+
     cell_w = (DRAW_MAX_X - DRAW_MIN_X) / len(xpoints)
     cell_h = (DRAW_MAX_Y - DRAW_MIN_Y) / len(ypoints)
-
     #draw each square first
     for i in range(len(xpoints)):
         for j in range(len(ypoints)):
             math_x = xpoints[i]
             math_y = ypoints[j]
-
             #do this for every item in the list
             for curFunc in drawFinal:
                 # 1. Check if the point is within the user's defined mathematical boundary
                 if curFunc[2].inBounds(math_x, math_y):
-
                     # 2. Evaluate the equation
                     z = curFunc[0].evaluate(math_x, math_y)
 
@@ -155,14 +181,9 @@ if __name__ == "__main__":
 
     # --- 2. MATH SETUP ---
     # Create the equation. Try changing this to "sin(x) + cos(y)"!
-    eq = Equation(
-        "2\sin\left(-2x-\frac{1}{8}y+\cos\left(3y-x-\sin\left(\cos\left(\sin\left(\sin\left(x*y\right)+x\right)\right)+x-y+arccot\left(x\right)\arctan\left(y\right)\right)\right)\right)+\frac{\left(x^{2}+\frac{y^{2}}{14}\right)}{3}-\left(\frac{100}{x^{2}+y^{2}}\right)+e^{-4-y}")  #
-    r = Equation("255((x-(cos(3.7(x+0.8))/3))/2.8+1.28)")
-    g = Equation("255(sin(1.5(x+pi/2))/2.8+0.5)")
-    b = Equation("255(e^(-(3(x+0.99))^2)/3-x/9+0.1)")
+
     eq2 = Equation(
         "arctan(2sin(-2x-y/8+cos(3y-x-sin(cos(sin( sin(x*y) + x )+x-y+arctan(y)))))+\frac{\left(x^{2}+\frac(y^2,14)+0\right)}{3}-100/(x^2+y^2)+2.71828^(-4-y))")  #
-    my_color = Color(r, g, b)
     my_boundary = Boundary(Equation(
         "arctan(2sin(-2x-y/8+cos(3y-x-sin(cos(sin( sin(x*y) + x )+x-y+arctan(y)))))+\frac{\left(x^{2}+\frac(y^2,14)+0\right)}{3}-100/(x^2+y^2)+2.71828^(-4-y))-1.45"),
                            True)
@@ -170,6 +191,10 @@ if __name__ == "__main__":
 
     # Generate the coordinate grid (e.g., from -10 to 10)
     # Using a 100x100 resolution for the bare minimum test
+
+    update_functions()
+    print(drawFinal)
+
     GRID_RESOLUTION = 100
     MATH_MIN, MATH_MAX = -15.0, 15.0
 
@@ -184,11 +209,12 @@ if __name__ == "__main__":
     # --- 3. RENDER ONCE ---
     screen.fill((255, 255, 255))  # Fill background with black
     print("Rendering grid...")
-    renderingtime = GRID_RESOLUTION ** 2 * (eq.size() + r.size() + g.size() + b.size()) / 1000000
-    print("estimated rendering time: " + str(renderingtime) + " seconds")
+    #renderingtime = GRID_RESOLUTION ** 2 * (eq.size() + r.size() + g.size() + b.size()) / 1000000
+    #print("estimated rendering time: " + str(renderingtime) + " seconds")
     print("Note: the power of your device will affect runtime speeds.")
 
-    render_grid(screen, eq2, my_color, my_boundary, x_coords, y_coords)
+    #render_grid(screen, eq2, my_color, my_boundary, x_coords, y_coords)
+    render_grid(screen, x_coords, y_coords)
     # render_grid(screen, eq2, my_color, my_boundary, x_coords2, y_coords2)
     # Pushes the drawing to the actual monitor
     pygame.display.flip()
