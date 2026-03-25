@@ -20,6 +20,22 @@ TABS_WIDTH, TABS_HEIGHT = 60, 50
 PANELS = ['Functions', 'Colours', 'Restrictions', 'Draw', 'Settings']
 current_panel = 'Functions'
 
+#Stores which functions are at what locations
+functionsList=[]
+#direct map of all usable functions
+functionsDict={}
+#Stores which colors are at what locations
+colorsList=[]
+#direct map of all usable colors
+colorsDict={}
+#Stores which restrictions are at what locations
+restrictionsList=[]
+#direct map of all usable restrictions
+restrictionsDict={}
+#all inputted draw stuff
+drawList=[]
+#List of all functions to draw
+drawFinal=[]
 
 # textbox object
 class Textbox:
@@ -45,6 +61,39 @@ class Textbox:
             self.text = self.text[:-1]
         else:
             self.text += passed_ev.unicode
+
+def update_functions() -> None:
+    """
+    takes the lists and makes sure that everything is working as intended
+    """
+    functionsDict={}
+    for x in functionsList:
+        if x[0] not in functionsDict:
+            functionTree=Equation(x[1])
+            #note: this implementation means that you can have bad functions
+            #this is accounted for in error checking but you will need to error flag check here
+            functionsDict[x[0]]=functionTree
+    colorsDict = {}
+    for x in colorsList:
+        if x[0] not in colorsDict:
+            if all(x[c] in functionsDict for c in [1,2,3]):
+                newColor = Color(functionsDict[x[1]],functionsDict[x[2]],functionsDict[x[3]])
+                # note: this implementation means that you can have bad colors with bad functions
+                # this is accounted for in error checking but you will need to error flag check here
+                colorsDict[x[0]] = newColor
+    restrictionsDict = {}
+    for x in restrictionsList:
+        if x[0] not in restrictionsDict:
+            if x[1] in functionsDict:
+                newRestriction = Boundary(functionsDict[x[1]],x[2])
+                # note: this implementation means that you can have bad colors with bad functions
+                # this is accounted for in error checking but you will need to error flag check here
+                restrictionsDict[x[0]] = newRestriction
+    drawFinal=[]
+    for x in drawList:
+        if x[0] in functionsDict and x[1] in colorsDict and x[2] in restrictionsDict:
+            drawFinal.append((functionsDict[x[0]],colorsDict[x[1]],restrictionsDict[x[2]]))
+        
 
 
 def render_grid(screen: pygame.Surface, drawFunc: Equation, color: Color, boundary: Boundary, xpoints: list[float],
