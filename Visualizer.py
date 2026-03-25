@@ -91,35 +91,40 @@ def update_functions() -> None:
     global drawFinal
     functionsDict={}
     for x in functionsList:
+        if ';' not in x[0]:
+            if x[0] not in functionsDict:
+            
+                functionTree=Equation(x[1])
+                #note: this implementation means that you can have bad functions
+                #this is accounted for in error checking but you will need to error flag check here
+                functionsDict[x[0]]=functionTree
 
-        if x[0] not in functionsDict:
-
-            functionTree=Equation(x[1])
-            #note: this implementation means that you can have bad functions
-            #this is accounted for in error checking but you will need to error flag check here
-            functionsDict[x[0]]=functionTree
+        #else flag
     colorsDict = {}
     for x in colorsList:
-
-        if x[0] not in colorsDict:
-
-            if all(x[c] in functionsDict for c in [1,2,3]):
-
-                newColor = Color(functionsDict[x[1]],functionsDict[x[2]],functionsDict[x[3]])
-                # note: this implementation means that you can have bad colors with bad functions
-                # this is accounted for in error checking but you will need to error flag check here
-                colorsDict[x[0]] = newColor
+        if ';' not in x[0]:
+            if x[0] not in colorsDict:
+    
+                if all(x[c] in functionsDict for c in [1,2,3]):
+    
+                    newColor = Color(functionsDict[x[1]],functionsDict[x[2]],functionsDict[x[3]])
+                    # note: this implementation means that you can have bad colors with bad functions
+                    # this is accounted for in error checking but you will need to error flag check here
+                    colorsDict[x[0]] = newColor
+        #else flag
     restrictionsDict = {}
     for x in restrictionsList:
-        if x[0] not in restrictionsDict:
-            if x[1] in functionsDict:
-                newRestriction = Boundary(functionsDict[x[1]],x[2])
-                # note: this implementation means that you can have bad colors with bad functions
-                # this is accounted for in error checking but you will need to error flag check here
-                restrictionsDict[x[0]] = newRestriction
+        if ';' not in x[0]:
+            if x[0] not in restrictionsDict:
+                if x[1] in functionsDict:
+                    newRestriction = Boundary(functionsDict[x[1]],x[2])
+                    # note: this implementation means that you can have bad colors with bad functions
+                    # this is accounted for in error checking but you will need to error flag check here
+                    restrictionsDict[x[0]] = newRestriction
+        #else flag
     drawFinal=[]
     for x in drawList:
-
+        
         if x[0] in functionsDict and x[1] in colorsDict and x[2] in restrictionsDict:
             drawFinal.append((functionsDict[x[0]],colorsDict[x[1]],restrictionsDict[x[2]]))
     
