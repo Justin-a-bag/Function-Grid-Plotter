@@ -26,7 +26,7 @@ class Equation:
 
         REPLACEMENTS = {
             '{': '(', '}': ')','(-': '(0-',
-        '\a': '`a', '\b': '`b', '\f': '`f', '\n': '`n', '\r': '`r', '\t': '`t', '\v': '`v', '\s': '`s', '\l': '`l',
+        '\a': '`a', '\b': '`b', '\f': '`f', '\n': '`n', '\r': '`r', '\t': '`t', '\v': '`v',
             '\left(':'(','\right)':')'
         }
 
@@ -144,88 +144,94 @@ class Equation:
         # i am describing everything like i'm an israeli soldier in Gaza
         def apply_operator():
             """Pops an operator and its required children to create a sub-tree."""
+            nonlocal potato
             try:
                 op = operator_stack.pop()
                 num_args = PRECEDENCE[op][1]
 
-                # Kill children in reverse order starting with the youngest (since stacks are Last-In-First-Out)
-
                 children = []
                 for _ in range(num_args):
-                    # take the children from their old family, put them in a new family
                     children.append(output_stack.pop())
-                # make it so that the eldest is arranged first, since it's easier to abduct them younger
                 children.reverse()
 
-                # Create a new family and put it back on the output to fend for themselves
                 output_stack.append(Node(op, children))
-            except IndexError:
+            except (IndexError, KeyError): # <--- Catch KeyError too!
                 potato = True
-                output_stack.append(Node('invalid', []))
+                output_stack.append(Node('potato', []))
 
+        # --- THE SHUNTING-YARD ALGORITHM ---
         for token in tokenized_input:
-            # remember, all children go in the output stack pile
-            # STEP 1: If it's a Number, it's a child
+
+            # STEP 1: Numbers
             if token.replace('.', '', 1).isdigit():
                 output_stack.append(Node(float(token)))
 
-            # STEP 2: If it's x or y, don't let its size deceive you, it's still a child
+            # STEP 2: Variables (x, y)
             elif token in ('x', 'y'):
                 output_stack.append(Node(token))
 
-            # STEP 3: Handle Parentheses
-            # parentheses aren't human, they're put in a separate stack
+            # STEP 2.5: Custom UI Variables (e.g., ;eq)
+            elif token.startswith(';'):
+                output_stack.append(Node(token))
+
+            # STEP 3: Open Parenthesis
             elif token == '(':
                 operator_stack.append(token)
 
-            # okay but this guy is special because if this guy appears you gotta kill a bunch of people
+            # STEP 4: Close Parenthesis
             elif token == ')':
-                # Loop through and add combine families until you're done
-                while operator_stack and operator_stack[-1] != '(':
-                    apply_operator()
-                operator_stack.pop()  # Remove the '('
-            elif token == ',':
-                # marks the end of a section
-                #finish all operations before this one
                 while operator_stack and operator_stack[-1] != '(':
                     apply_operator()
 
-            # STEP 4: Handle Operators/Functions
-            # everything here deals with operators/functions
+                # If the stack is empty, there are too many closing brackets
+                if not operator_stack:
+                    potato = True
+                else:
+                    operator_stack.pop()  # Safely remove the '('
+
+            # STEP 5: Functions and Operators
             elif token in PRECEDENCE:
-                # there are special types of people we gotta look out for
-                # While the operator at the top of the stack is "stronger" than current token,
-                # we must solve that one first.
-                while (operator_stack and operator_stack[-1] != '(' and PRECEDENCE[operator_stack[-1]][0] >=
-                       PRECEDENCE[token][0]):
+                while (operator_stack and operator_stack[-1] != '(' and
+                       PRECEDENCE[operator_stack[-1]][0] >= PRECEDENCE[token][0]):
                     apply_operator()
-                # add the operator to the operator stack
-                # we do this because functions are in prefix (polish) notation (+ a b) rather than infix notation (a + b)
-                # so we need to get all the functions first
-                # in theory this means we don't even need brackets to declare a function
                 operator_stack.append(token)
 
+            # STEP 6: Replaceable LaTeX (cdot, times)
             elif token in REPLACEABLE:
-                # you see, these people aren't citizens so we have to look at their birth certificates to find their real identities
-                # Same as above, only it looks at REPLACEABLE to find the correct symbol
-                while (operator_stack and operator_stack[-1] != '(' and PRECEDENCE[operator_stack[-1]][0] >=
-                       PRECEDENCE[REPLACEABLE[token]][0]):
+                while (operator_stack and operator_stack[-1] != '(' and
+                       PRECEDENCE[operator_stack[-1]][0] >= PRECEDENCE[REPLACEABLE[token]][0]):
                     apply_operator()
                 operator_stack.append(REPLACEABLE[token])
+
+            # STEP 7: Multi-Argument Commas
+            elif token == ',':
+                while operator_stack and operator_stack[-1] != '(':
+                    apply_operator()
+
+            # Fail-safe: If the tree broke during this step, abort
             if potato:
                 self.tree = Node("potato", [])
                 return
 
-            # STEP 5: Final Cleanup
-            # kill any surviving residents
-            # Solve any remaining operators in the stack
+        # --- FINAL CLEANUP ---
         while operator_stack:
+            # If there's an unclosed '(' left, the user forgot a ')'
+            if operator_stack[-1] == '(':
+                potato = True
+                break
+
             apply_operator()
+
             if potato:
                 self.tree = Node("potato", [])
                 return
 
-        # The very last item on the output stack is the Root of our tree
+        # Final safety check: if it's broken or completely empty
+        if potato or not output_stack:
+            self.tree = Node("potato", [])
+            return
+
+        # The very last item on the output stack is the Root of our tree!
         self.tree = output_stack[0]
 
     def evaluate(self, x: float, y: float) -> float:
@@ -239,6 +245,8 @@ class Equation:
     def size(self):
         return self.tree.size()
 
+    def ast_to_string(self) -> str:
+        return self.tree.ast_to_string()
 
 class Node:
     # op is either a string (the operation) or a value (a number or x or y)
@@ -253,6 +261,26 @@ class Node:
     def size(self):
         # Quality of life method: returns size of the tree
         return 1 + sum([c.size() for c in self.children])
+
+    def ast_to_string(self) -> str:
+
+        # base case: leaf node
+        if len(self.children) == 0:
+            return str(self.op)
+        ni = ""
+        # infix operators
+        if self.op in ('+', '-', '*', '/', '^', '%') and len(self.children) == 2:
+            ni += "(" + self.children[0].ast_to_string()
+            ni += str(self.op)
+            ni += self.children[1].ast_to_string() + ")"
+            return ni
+
+        # unary functions in prefix style
+        ni += str(self.op) + "("
+        for x in self.children:
+            ni += x.ast_to_string() + ","
+        ni = ni[:-1] + ")"
+        return ni
 
     def evaluate(self, x, y):
         # Evaluate children first
@@ -282,6 +310,8 @@ class Node:
             return math.pi
         if self.op == 'e':
             return math.e
+
+
 
         # simple operations
         if self.op == '+':
@@ -361,7 +391,7 @@ class Node:
             return math.acosh(vals[0]) if x >= 1 else 'nan'
         if self.op == 'arcsech':
             return math.acosh(1 / vals[0]) if x > 1 else 'nan'
-        if self.op == 'arccsch':
+        if self.op == 'arccsc':
             return math.asin(1 / vals[0]) if x ** 2 != 1 else 'nan'
         if self.op == 'arctanh':
             return math.atanh(vals[0]) if x ** 2 < 1 else 'nan'
