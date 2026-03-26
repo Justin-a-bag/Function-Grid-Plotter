@@ -35,7 +35,7 @@ AST_WRAP_WIDTH = 55
 
 # --- GLOBAL STATE ---
 # Note: IDs here do NOT contain the semicolon.
-# Semicolons are only used inside the math strings (e.g., "sin(;eq)")
+# Tildes are only used inside the math strings (e.g., "sin(~eq~)")
 functionsList = [
         ("eq",
          "arctan(2sin(-2x-y/8+cos(3y-x-sin(cos(sin(sin(x*y)+x))+x-y+arccot(x)*arctan(y))))+frac{(x^{2}+\frac{y^{2}}{14})}{3}-(\frac{100}{x^{2}+y^{2}})+e^{-4-y})"),
@@ -223,11 +223,13 @@ def update_functions() -> None:
             error_states[i] = ((150, 150, 150), "")  # Grey (Empty)
             continue
 
-        # Rule 1: NO Semicolons in the declaration box!
-        if ';' in u_id:
+        # Rule 1: NO tildes in the declaration box!
+        #What the fucking kind of symbol is this?
+        #This is a tilde. It is used to represent a variable or a function inside another function
+        if '~' in u_id:
             error_states[i] = ((200, 50, 50),
-                               "Variable names cannot contain ';'. Use ';' only when referencing them in equations.")
-            continue  # Kill the ID
+                               "Variable names cannot contain '~'. Use '~' only when referencing them in equations.")
+            continue  # fucking kill the ID
 
         # Rule 2: Duplicate Check
         if u_id in seen_ids:
