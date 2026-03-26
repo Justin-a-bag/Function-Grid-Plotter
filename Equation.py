@@ -234,11 +234,12 @@ class Equation:
         # The very last item on the output stack is the Root of our tree!
         self.tree = output_stack[0]
 
-    def evaluate(self, x: float, y: float) -> float:
+    def evaluate(self, x: float, y: float, angle_mode = "potato") -> float:
         # this is the tree traversal step; the entire thing should return a float
         # evaluate the trees on the upper levels then evaluate this bottom node you get the point
         # eliminates possibility of returning a complex value
-        result = self.tree.evaluate(x, y)
+        mode = False if angle_mode is "degrees" else True
+        result = self.tree.evaluate(x, y, mode)
         return result if not isinstance(result, complex) else 'nan'
 
     # returns size of the tree (number of nodes)
@@ -282,7 +283,7 @@ class Node:
         ni = ni[:-1] + ")"
         return ni
 
-    def evaluate(self, x, y):
+    def evaluate(self, x, y, use_radians=True):
         # Evaluate children first
         vals = [c.evaluate(x, y) for c in self.children]
 
@@ -342,33 +343,43 @@ class Node:
         if self.op == 'cbrt':
             return vals[0] ** (1 / 3)
 
-        # unrestricted trig
+        #If measurements in degrees, change that
+        trig_input = vals[0]
+        if use_radians == False and self.op in ('sin', 'cos', 'tan', 'sec', 'csc', 'cot'):
+            trig_input = math.radians(vals[0])
+        # Unrestricted Trig
         if self.op == 'sin':
-            return math.sin(vals[0])
+            return math.sin(trig_input)
         if self.op == 'cos':
-            return math.cos(vals[0])
+            return math.cos(trig_input)
         if self.op == 'arctan':
-            return math.atan(vals[0])
+            result = math.atan(vals[0])
+            return math.degrees(result) if use_radians == False else result
         if self.op == 'arccot':
-            return math.pi / 2 - math.atan(vals[0])
+            result = math.pi / 2 - math.atan(vals[0])
+            return math.degrees(result) if use_radians == False else result
 
         # trig with bad values
         if self.op == 'cot':
-            return math.tan(math.pi / 2 - vals[0]) if math.sin(vals[0]) != 0.0 else 'nan'
+            return math.tan(math.pi / 2 - trig_input) if math.sin(trig_input) != 0.0 else 'nan'
         if self.op == 'tan':
-            return math.tan(vals[0]) if math.cos(vals[0]) != 0.0 else 'nan'
+            return math.tan(trig_input) if math.cos(trig_input) != 0.0 else 'nan'
         if self.op == 'csc':
-            return 1 / math.sin(vals[0]) if math.sin(vals[0]) != 0.0 else 'nan'
+            return 1 / math.sin(trig_input) if math.sin(trig_input) != 0.0 else 'nan'
         if self.op == 'sec':
-            return 1 / math.cos(vals[0]) if math.cos(vals[0]) != 0.0 else 'nan'
+            return 1 / math.cos(trig_input) if math.cos(trig_input) != 0.0 else 'nan'
         if self.op == 'arcsin':
-            return math.asin(vals[0]) if x ** 2 <= 1 else 'nan'
+            result = math.asin(vals[0]) if vals[0] ** 2 <= 1 else 'nan'
+            return math.degrees(result) if result != 'nan' and use_radians == False else result
         if self.op == 'arccos':
-            return math.acos(vals[0]) if x ** 2 <= 1 else 'nan'
+            result = math.acos(vals[0]) if vals[0] ** 2 <= 1 else 'nan'
+            return math.degrees(result) if result != 'nan' and use_radians == False else result
         if self.op == 'arcsec':
-            return math.acos(1 / vals[0]) if x ** 2 >= 1 else 'nan'
+            result = math.acos(1 / vals[0]) if vals[0] ** 2 >= 1 else 'nan'
+            return math.degrees(result) if result != 'nan' and use_radians == False else result
         if self.op == 'arccsc':
-            return math.asin(1 / vals[0]) if x ** 2 >= 1 else 'nan'
+            result = math.asin(1 / vals[0]) if vals[0] ** 2 >= 1 else 'nan'
+            return math.degrees(result) if result != 'nan' and use_radians == False else result
 
         # unrestricted hyperbolic trig
         if self.op == 'sinh':
