@@ -67,7 +67,19 @@ class Equation:
                 # allows for input of \left( and \right)
                 if unit != 'left' and unit != 'right':
                     tokens.append(unit)
-
+            elif char == '~':
+                unit = "~"
+                i += 1
+                # Read until we hit the closing tilde or the end of the string
+                while i < len(equation) and equation[i] != '~':
+                    unit += equation[i]
+                    i += 1
+                # Grab the closing tilde if it exists
+                # note that if the entire equation gets filled it'll make a bad token
+                if i < len(equation) and equation[i] == '~':
+                    unit += equation[i]
+                    i += 1
+                tokens.append(unit)
             # 4. Handle Single Symbols (+, -, *, /, ^, (, ))
             # if it sees a symbol immediately turn it into a token
             # Note: this implementation might need to be changed if you want to allow ** as an input for ^ or smth like that
@@ -87,10 +99,14 @@ class Equation:
             if j < len(tokens) - 1:
                 curr_token = tokens[j]
                 next_token = tokens[j + 1]
+
+                # Check if current token is an operand/variable AND next is a function/variable/open parenthesis
                 # If the token that was just added is a digit/x/y/) and the next digit is a letter/(
                 # there are other cases of this but i'm too lazy to implement that
-                if (curr_token.replace('.', '', 1).isdigit() or curr_token in ('x', 'y', ')', 'pi', 'e')) and (
-                        next_token.isalpha() or next_token in ('x', 'y', '(', 'pi', 'e')):
+                if (curr_token.replace('.', '', 1).isdigit() or curr_token in ('x', 'y', ')', 'pi',
+                                                                               'e') or curr_token.startswith('~')) and \
+                        (next_token.isalpha() or next_token in ('x', 'y', '(', 'pi', 'e') or next_token.startswith(
+                            '~')):
                     final_tokens.append('*')
 
         return final_tokens
@@ -170,9 +186,11 @@ class Equation:
             elif token in ('x', 'y'):
                 output_stack.append(Node(token))
 
-            # STEP 2.5: Custom UI Variables (e.g., ;eq)
-            elif token.startswith(';'):
+            # STEP 2.5: Custom UI Variables (e.g., ~eq~)
+            # Note that if the token is a bad token this section will not trigger
+            elif token.startswith('~') and token.endswith('~'):
                 output_stack.append(Node(token))
+
 
             # STEP 3: Open Parenthesis
             elif token == '(':
@@ -234,12 +252,16 @@ class Equation:
         # The very last item on the output stack is the Root of our tree!
         self.tree = output_stack[0]
 
-    def evaluate(self, x: float, y: float, angle_mode = "potato") -> float:
+    def evaluate(self, x: float, y: float, angle_mode = "potato",env:dict = None, depth = 0) -> float:
         # this is the tree traversal step; the entire thing should return a float
         # evaluate the trees on the upper levels then evaluate this bottom node you get the point
         # eliminates possibility of returning a complex value
-        mode = False if angle_mode is "degrees" else True
-        result = self.tree.evaluate(x, y, mode)
+        if depth>100:
+            return x+y
+        if env is None:
+            env = {}
+        mode = False if angle_mode == "degrees" else True
+        result = self.tree.evaluate(x, y, mode, env,depth)
         return result if not isinstance(result, complex) else 'nan'
 
     # returns size of the tree (number of nodes)
@@ -283,9 +305,9 @@ class Node:
         ni = ni[:-1] + ")"
         return ni
 
-    def evaluate(self, x, y, use_radians=True):
+    def evaluate(self, x, y, use_radians=True, env:dict = None, depth = 0):
         # Evaluate children first
-        vals = [c.evaluate(x, y) for c in self.children]
+        vals = [c.evaluate(x, y, use_radians,env,depth) for c in self.children]
 
         if self.op == 'invalid' or any(c == 'invalid' for c in vals):
             # invalid input error
@@ -312,6 +334,15 @@ class Node:
         if self.op == 'e':
             return math.e
 
+        if isinstance(self.op, str) and self.op.startswith('~') and self.op.endswith('~'):
+            var_name = self.op[1:-1]  # Strip the tildes to match dictionary keys
+
+            # If the variable exists in our UI dictionary
+            if env and var_name in env:
+                # Recursively evaluate the nested equation, increasing depth by 1
+                return env[var_name].evaluate(x, y, "radians" if use_radians else "degrees", env, depth + 1)
+            else:
+                return 'nan'  # Variable hasn't been defined yet
 
 
         # simple operations
@@ -344,7 +375,7 @@ class Node:
             return vals[0] ** (1 / 3)
 
         #If measurements in degrees, change that
-        trig_input = vals[0]
+        trig_input = vals[0] if len(vals)>0 else None
         if use_radians == False and self.op in ('sin', 'cos', 'tan', 'sec', 'csc', 'cot'):
             trig_input = math.radians(vals[0])
         # Unrestricted Trig
@@ -426,6 +457,7 @@ class Node:
             return max(vals[0], vals[1])
         if self.op == 'clamp':
             return min(max(vals[0], vals[1]), vals[2])
+
 
         # Add other things after here
         # grammar isn't too important in this step since we can make the grammar whatever we want
