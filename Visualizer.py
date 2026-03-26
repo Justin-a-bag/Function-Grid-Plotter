@@ -11,7 +11,7 @@ from Boundary import Boundary
 WIDTH, HEIGHT = 1100, 800
 DRAW_MIN_X, DRAW_MAX_X = 300, WIDTH
 DRAW_MIN_Y, DRAW_MAX_Y = 0, HEIGHT
-TEXTBOX_Y = 50  # Lowered slightly to fit tabs
+TEXTBOX_Y = 50
 TEXTBOX_WIDTH, TEXTBOX_HEIGHT = 300, 50
 TEXTBOX_COLOR = (240, 240, 240)
 INDENT_COLOR = (200, 200, 200)
@@ -20,10 +20,11 @@ TABS_WIDTH, TABS_HEIGHT = 60, 50
 PANELS = ['Functions', 'Colours', 'Restrictions', 'Draw', 'Settings']
 current_panel = 'Functions'
 
-# Global State
+# --- GLOBAL STATE ---
+# Note: IDs here do NOT contain the semicolon.
+# Semicolons are only used inside the math strings (e.g., "sin(;eq)")
 functionsList = [
-        ("eq",
-         "arctan(2\sin\left(-2x-\frac{1}{8}y+\cos\left(3y-x-\sin\left(\cos\left(\sin\left(\sin\left(x*y\right)+x\right)\right)+x-y+arccot\left(x\right)\arctan\left(y\right)\right)\right)\right)+\frac{\left(x^{2}+\frac{y^{2}}{14}\right)}{3}-\left(\frac{100}{x^{2}+y^{2}}\right)+e^{-4-y})"),
+        ("eq", "sin(x)"),
         ("r", "255((x-(cos(3.7(x+0.8))/3))/2.8+1.28)"),
         ("g", "255(sin(1.5(x+pi/2))/2.8+0.5)"),
         ("b", "255(e^(-(3(x+0.99))^2)/3-x/9+0.1)"),
@@ -38,6 +39,9 @@ restrictionsDict = {}
 drawList = [("eq", "my_color", "rest")]
 drawFinal = []
 
+# Maps list index -> ((R, G, B), "Error Message")
+error_states = {}
+
 pygame.init()
 font = pygame.font.SysFont(None, 24)
 small_font = pygame.font.SysFont(None, 18)
@@ -45,7 +49,7 @@ small_font = pygame.font.SysFont(None, 18)
 
 class DataEntryField:
     """
-    [UI] Replaces the Textbox. Acts as a State Machine for each list item.
+    Replaces the Textbox. Acts as a State Machine for each list item.
     """
 
     def __init__(self, index: int, list_ref: list):
@@ -61,7 +65,7 @@ class DataEntryField:
             self.id_str = ""
             self.data_str = ""
 
-        # [UI] Backups for when the user clicks off (Cancels)
+        # Backups for when the user clicks off (Cancels)
         self.backup_id = self.id_str
         self.backup_data = self.data_str
 
@@ -70,7 +74,6 @@ class DataEntryField:
         self.editing_data = False
 
         # Sub-rectangles for hit-testing
-        # Error flag circle will be drawn around x=15, y=self.y+25
         self.id_rect = pygame.Rect(30, self.y + 10, 50, 30)
         self.data_rect = pygame.Rect(85, self.y + 10, 150, 30)
         self.btn_enter = pygame.Rect(240, self.y + 10, 50, 30)
@@ -82,9 +85,10 @@ class DataEntryField:
         pygame.draw.rect(surface, bg_color, self.rect)
         pygame.draw.rect(surface, (150, 150, 150), self.rect, 1)  # Border
 
-        # 1. Error Flagging (Placeholder)
-        # TODO: Check 'functionsDict[self.id_str]' for invalid/potato nodes here to change color
-        flag_color = (200, 50, 50) if not self.id_str else (50, 200, 50)
+        # 1. Error Flagging
+        # Fetch the color from our global error_states dict based on this field's index.
+        # Defaults to Grey if not found.
+        flag_color = error_states.get(self.index, ((150, 150, 150), ""))[0]
         pygame.draw.circle(surface, flag_color, (15, self.y + 25), 6)
 
         # 2. Draw ID Field
@@ -95,20 +99,18 @@ class DataEntryField:
         # 3. Draw Data Field (With Scrolling/Clipping)
         pygame.draw.rect(surface, (255, 255, 255) if self.editing_data else bg_color, self.data_rect)
 
-        # [UI] ast_to_string logic: if NOT editing, show the formatted AST string
+        # ast_to_string logic: if NOT editing, show the formatted AST string
         display_str = self.data_str
         if not is_active and self.id_str in functionsDict:
             try:
-                # Assuming Equation has this method. If it fails, it defaults to raw string.
                 display_str = functionsDict[self.id_str].ast_to_string()
             except AttributeError:
                 pass
 
         data_surf = font.render(display_str, True, TEXT_COLOR)
 
-        # [UI] Scroll through text entry field natively via subsurface clipping
+        # Scroll through text entry field natively via subsurface clipping
         clip_area = pygame.Rect(0, 0, self.data_rect.width - 5, self.data_rect.height)
-        # If text is longer than the box, anchor it to the right side while typing
         if data_surf.get_width() > clip_area.width and is_active:
             clip_area.x = data_surf.get_width() - clip_area.width
 
@@ -145,20 +147,18 @@ class DataEntryField:
                 self.data_str += event.unicode
 
     def cancel(self):
-        """[UI] Reverts the field to what it had originally without changing data."""
+        """Reverts the field to what it had originally without changing data."""
         self.id_str = self.backup_id
         self.data_str = self.backup_data
         self.editing_id = False
         self.editing_data = False
 
     def confirm(self) -> bool:
-        """[UI] Changes list indices and triggers dict rebuild."""
+        """Changes list indices and triggers dict rebuild."""
         global functionsList
         if self.index < len(functionsList):
-            # Update existing
             functionsList[self.index] = (self.id_str, self.data_str)
         else:
-            # Add new if they actually typed something
             if self.id_str.strip() != "":
                 functionsList.append((self.id_str, self.data_str))
 
@@ -172,12 +172,47 @@ class DataEntryField:
 
 
 def update_functions() -> None:
-    global functionsDict, colorsDict, restrictionsDict, drawFinal
-    functionsDict.clear()
-    for x in functionsList:
-        if x[0] not in functionsDict:
-            functionsDict[x[0]] = Equation(x[1])
+    """Rebuilds all dictionaries and runs error checking validation."""
+    global functionsDict, colorsDict, restrictionsDict, drawFinal, error_states
 
+    functionsDict.clear()
+    error_states.clear()
+    seen_ids = set()
+
+    # --- 1. BUILD FUNCTIONS AND CHECK ERRORS ---
+    for i, item in enumerate(functionsList):
+        u_id, u_str = item[0], item[1]
+
+        if not u_id:
+            error_states[i] = ((150, 150, 150), "")  # Grey (Empty)
+            continue
+
+        # Rule 1: NO Semicolons in the declaration box!
+        if ';' in u_id:
+            error_states[i] = ((200, 50, 50),
+                               "Variable names cannot contain ';'. Use ';' only when referencing them in equations.")
+            continue  # Kill the ID
+
+        # Rule 2: Duplicate Check
+        if u_id in seen_ids:
+            error_states[i] = ((200, 200, 50), "Duplicate ID: Using the first declared value.")
+            continue  # Skip adding to dict
+
+        seen_ids.add(u_id)
+
+        # Rule 3: Compile the math and check tree integrity
+        eq = Equation(u_str)
+        functionsDict[u_id] = eq
+
+        # Check for Math Errors vs Size Warnings
+        if eq.tree.op == 'invalid' or eq.tree.op == 'potato':
+            error_states[i] = ((200, 50, 50), "Math Error: Invalid syntax or missing arguments.")
+        elif eq.size() > 100:
+            error_states[i] = ((50, 100, 200), "Warning: Large function tree. May impact performance.")
+        else:
+            error_states[i] = ((50, 200, 50), "Valid")  # Green
+
+    # --- 2. BUILD SECONDARY DICTS ---
     colorsDict.clear()
     for x in colorsList:
         if x[0] not in colorsDict:
@@ -227,8 +262,7 @@ if __name__ == "__main__":
     x_coords = [MATH_MIN + 1 + i * step for i in range(GRID_RESOLUTION)]
     y_coords = [MATH_MIN + j * step for j in range(GRID_RESOLUTION)]
 
-    # [UI] Generate a static surface to hold the math grid.
-    # This prevents the UI textboxes from lagging while the user types!
+    # Generate a static surface to hold the math grid so UI doesn't lag
     grid_surface = pygame.Surface((WIDTH, HEIGHT))
 
     update_functions()
@@ -261,14 +295,14 @@ if __name__ == "__main__":
                         clicked_any_field = True
                         needs_redraw = field.handle_click(mouse_pos)
 
-                        # [UI] If confirmed, recalculate grid and regenerate UI list to add the next empty block
+                        # If confirmed, recalculate grid and regenerate UI list to add the next empty block
                         if needs_redraw:
                             print("Recalculating Math...")
                             render_grid(grid_surface, x_coords, y_coords)
                             ui_fields = [DataEntryField(i, functionsList) for i in range(len(functionsList) + 1)]
 
                     else:
-                        # [UI] If they clicked another field, cancel the edit on this one
+                        # If they clicked another field, cancel the edit on this one
                         if field.editing_id or field.editing_data:
                             field.cancel()
 
