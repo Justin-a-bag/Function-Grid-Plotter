@@ -311,6 +311,8 @@ def draw_button(screen: pygame.Surface, font: pygame.font.Font, rect: pygame.Rec
     text_rect = text_surface.get_rect(center=rect.center)
     screen.blit(text_surface, text_rect)
 
+#if you need to render a screen make the functions for that screen here
+
 def render_settings_overlay(screen: pygame.Surface, font: pygame.font.Font) -> None:
     global settings_buttons
     settings_buttons = {}
@@ -453,31 +455,6 @@ if __name__ == "__main__":
                         current_panel = PANELS[i]
                         break
 
-                if current_panel == 'Settings':
-                    if settings_buttons.get("angle_toggle") and settings_buttons["angle_toggle"].collidepoint(
-                            mouse_pos):
-                        ANGLE_MODE = "degrees" if ANGLE_MODE == "radians" else "radians"
-                        update_functions()
-                        rerender_graph_surface(x_coords, y_coords)
-                    elif settings_buttons.get("size_prev") and settings_buttons["size_prev"].collidepoint(mouse_pos):
-                        apply_screen_size_from_index(SCREEN_SIZE_INDEX - 1)
-                        screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
-                        rerender_graph_surface(x_coords, y_coords)
-                    elif settings_buttons.get("size_next") and settings_buttons["size_next"].collidepoint(mouse_pos):
-                        apply_screen_size_from_index(SCREEN_SIZE_INDEX + 1)
-                        screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
-                        rerender_graph_surface(x_coords, y_coords)
-
-                if SHOW_AST:
-                    #if ast_buttons.get("toggle_ast") and ast_buttons["toggle_ast"].collidepoint(mouse_pos):
-                    #    SHOW_AST = False
-                    if ast_buttons.get("ast_prev") and ast_buttons["ast_prev"].collidepoint(mouse_pos):
-                        cycle_ast_selection(-1)
-                    elif ast_buttons.get("ast_next") and ast_buttons["ast_next"].collidepoint(mouse_pos):
-                        cycle_ast_selection(1)
-                #if toggle_ast_button.collidepoint(mouse_pos) and current_panel == 'Functions':
-                #    SHOW_AST = not SHOW_AST
-
                 # Check if user clicked inside any UI field
                 if current_panel == 'Functions':
                     clicked_any_field = False
@@ -497,9 +474,48 @@ if __name__ == "__main__":
                             if field.editing_id or field.editing_data:
                                 field.cancel()
 
+
                     # If they clicked entirely outside the UI sidebar, cancel everything
                     if not clicked_any_field:
                         for field in ui_fields: field.cancel()
+                                
+                if current_panel == 'Colours':
+                    #deal with buttons here
+                    continue
+                        
+                if current_panel == 'Restricions':
+                    #deal with buttons here
+                    continue
+                        
+                if current_panel == 'Draw':
+                    #deal with buttons here
+                    continue
+
+                
+                if current_panel == 'Settings':
+                    if settings_buttons.get("angle_toggle") and settings_buttons["angle_toggle"].collidepoint(
+                            mouse_pos):
+                        ANGLE_MODE = "degrees" if ANGLE_MODE == "radians" else "radians"
+                        update_functions()
+                        rerender_graph_surface(x_coords, y_coords)
+                    elif settings_buttons.get("size_prev") and settings_buttons["size_prev"].collidepoint(mouse_pos):
+                        apply_screen_size_from_index(SCREEN_SIZE_INDEX - 1)
+                        screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
+                        rerender_graph_surface(x_coords, y_coords)
+                    elif settings_buttons.get("size_next") and settings_buttons["size_next"].collidepoint(mouse_pos):
+                        apply_screen_size_from_index(SCREEN_SIZE_INDEX + 1)
+                        screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
+                        rerender_graph_surface(x_coords, y_coords)
+
+                #if SHOW_AST:
+                    #if ast_buttons.get("toggle_ast") and ast_buttons["toggle_ast"].collidepoint(mouse_pos):
+                    #    SHOW_AST = False
+                #    if ast_buttons.get("ast_prev") and ast_buttons["ast_prev"].collidepoint(mouse_pos):
+                #        cycle_ast_selection(-1)
+                #    elif ast_buttons.get("ast_next") and ast_buttons["ast_next"].collidepoint(mouse_pos):
+                #        cycle_ast_selection(1)
+                #if toggle_ast_button.collidepoint(mouse_pos) and current_panel == 'Functions':
+                #    SHOW_AST = not SHOW_AST
 
             if event.type == pygame.KEYDOWN:
                 if current_panel == 'Functions':
