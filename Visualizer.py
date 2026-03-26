@@ -28,22 +28,22 @@ SCREEN_SIZE_OPTIONS = [(900, 700), (1100, 800), (1280, 900), (1400, 1000), (1600
 SCREEN_SIZE_INDEX = 1
 settings_buttons = {}
 ast_buttons = {}
-#I have temporarily disabled this feature since it isn't what we're looking for
-#toggle_ast_button = pygame.Rect(180, 0, 120, 30)
+# I have temporarily disabled this feature since it isn't what we're looking for
+# toggle_ast_button = pygame.Rect(180, 0, 120, 30)
 GRAPH_SURFACE = None
 AST_WRAP_WIDTH = 55
 
 # --- GLOBAL STATE ---
 # Note: IDs here do NOT contain the semicolon.
-# Tildes are only used inside the math strings (e.g., "sin(~eq~)")
+# Semicolons are only used inside the math strings (e.g., "sin(;eq)")
 functionsList = [
-        ("eq",
-         "arctan(2sin(-2x-y/8+cos(3y-x-sin(cos(sin(sin(x*y)+x))+x-y+arccot(x)*arctan(y))))+frac{(x^{2}+\frac{y^{2}}{14})}{3}-(\frac{100}{x^{2}+y^{2}})+e^{-4-y})"),
-        ("r", "255((x-(cos(3.7(x+0.8))/3))/2.8+1.28)"),
-        ("g", "255(sin(1.5(x+pi/2))/2.8+0.5)"),
-        ("b", "255(e^(-(3(x+0.99))^2)/3-x/9+0.1)"),
-        ("rest", "1")
-    ]
+    ("eq",
+     "arctan(2sin(-2x-y/8+cos(3y-x-sin(cos(sin(sin(x*y)+x))+x-y+arccot(x)*arctan(y))))+frac{(x^{2}+\frac{y^{2}}{14})}{3}-(\frac{100}{x^{2}+y^{2}})+e^{-4-y})"),
+    ("r", "255((x-(cos(3.7(x+0.8))/3))/2.8+1.28)"),
+    ("g", "255(sin(1.5(x+pi/2))/2.8+0.5)"),
+    ("b", "255(e^(-(3(x+0.99))^2)/3-x/9+0.1)"),
+    ("rest", "1")
+]
 
 functionsDict = {}
 colorsList = [("my_color", "r", "g", "b")]
@@ -66,7 +66,7 @@ def calculate_draw_bounds():
     Forces the drawing area to remain the correct ratio to prevent stretching.
     This will need to be edited to allow for rectangular grids
     """
-    #TODO: calculate draw bounds based on the dimensions of the grid rather than a square
+    # TODO: calculate draw bounds based on the dimensions of the grid rather than a square
     global DRAW_MIN_X, DRAW_MAX_X, DRAW_MIN_Y, DRAW_MAX_Y
 
     # Calculate available space outside the 300px sidebar
@@ -81,6 +81,7 @@ def calculate_draw_bounds():
     DRAW_MAX_X = DRAW_MIN_X + grid_size
     DRAW_MIN_Y = (available_h - grid_size) // 2
     DRAW_MAX_Y = DRAW_MIN_Y + grid_size
+
 
 class DataEntryField:
     """
@@ -123,6 +124,7 @@ class DataEntryField:
         # 1. Error Flagging
         # Fetch the color from our global error_states dict based on this field's index.
         # Defaults to Grey if not found.
+        #TODO: blue flagging if a function is too large
         flag_color = error_states.get(self.index, ((150, 150, 150), ""))[0]
         pygame.draw.circle(surface, flag_color, (15, self.y + 25), 6)
 
@@ -170,7 +172,7 @@ class DataEntryField:
         return False
 
     def handle_keydown(self, event):
-            #TODO: improve quality of life (holding backspace, arrow keys)
+        # TODO: improve quality of life (holding backspace, arrow keys)
         if self.editing_id:
             if event.key == pygame.K_BACKSPACE:
                 self.id_str = self.id_str[:-1]
@@ -223,13 +225,11 @@ def update_functions() -> None:
             error_states[i] = ((150, 150, 150), "")  # Grey (Empty)
             continue
 
-        # Rule 1: NO tildes in the declaration box!
-        #What the fucking kind of symbol is this?
-        #This is a tilde. It is used to represent a variable or a function inside another function
-        if '~' in u_id:
+        # Rule 1: NO Tildes in the declaration box!
+        if ';' in u_id:
             error_states[i] = ((200, 50, 50),
-                               "Variable names cannot contain '~'. Use '~' only when referencing them in equations.")
-            continue  # fucking kill the ID
+                               "Variable names cannot contain ';'. Use ';' only when referencing them in equations.")
+            continue  # Fucking Kill the ID
 
         # Rule 2: Duplicate Check
         if u_id in seen_ids:
@@ -270,7 +270,7 @@ def update_functions() -> None:
 
 
 def render_grid(surface: pygame.Surface, xpoints: list[float], ypoints: list[float]):
-        #TODO: fix the new white lines appearing bug
+    # TODO: fix the new white lines appearing bug
     surface.fill((255, 255, 255))
     cell_w = (DRAW_MAX_X - DRAW_MIN_X) / len(xpoints)
     cell_h = (DRAW_MAX_Y - DRAW_MIN_Y) / len(ypoints)
@@ -280,8 +280,8 @@ def render_grid(surface: pygame.Surface, xpoints: list[float], ypoints: list[flo
             math_x = xpoints[i]
             math_y = ypoints[j]
             for curFunc in drawFinal:
-                if curFunc[2].inBounds(math_x, math_y):
-                    z = curFunc[0].evaluate(math_x, math_y)
+                if curFunc[2].inBounds(math_x, math_y,ANGLE_MODE,functionsDict,0):
+                    z = curFunc[0].evaluate(math_x, math_y,ANGLE_MODE,functionsDict,0)
                     squarecolor = curFunc[1].getColorTuple(z)
                     screen_x = DRAW_MIN_X + i * cell_w
                     screen_y = DRAW_MAX_Y - ((j + 1) * cell_h)
@@ -290,13 +290,13 @@ def render_grid(surface: pygame.Surface, xpoints: list[float], ypoints: list[flo
                         pygame.draw.rect(surface, squarecolor, (screen_x, screen_y, max(1.0, cell_w), max(1.0, cell_h)))
 
 
-
-#TODO: add comments to this god forsaken code stretch
+# TODO: add comments to this god forsaken code stretch
 def rerender_graph_surface(x_coords, y_coords):
     global GRAPH_SURFACE
     GRAPH_SURFACE = pygame.Surface((WIDTH, HEIGHT))
     GRAPH_SURFACE.fill((255, 255, 255))
     render_grid(GRAPH_SURFACE, x_coords, y_coords)
+
 
 def render_tab_labels(screen: pygame.Surface, font: pygame.font.Font) -> None:
     for i in range(len(PANELS)):
@@ -308,6 +308,7 @@ def render_tab_labels(screen: pygame.Surface, font: pygame.font.Font) -> None:
         label = font.render(PANELS[i][:4], True, (0, 0, 0))
         screen.blit(label, (rect.x + 4, rect.y + 15))
 
+
 def draw_button(screen: pygame.Surface, font: pygame.font.Font, rect: pygame.Rect, label: str) -> None:
     pygame.draw.rect(screen, (225, 225, 225), rect)
     pygame.draw.rect(screen, (70, 70, 70), rect, 2)
@@ -315,11 +316,12 @@ def draw_button(screen: pygame.Surface, font: pygame.font.Font, rect: pygame.Rec
     text_rect = text_surface.get_rect(center=rect.center)
     screen.blit(text_surface, text_rect)
 
-#TODO: the UI for the other 3 tabs 
-#(should probably use something similar to render_tab_labels and draw_button for this?)
 
-#if you need to render a screen make the functions for that screen here
-#TODO: update and rework settings overlay
+# TODO: the UI for the other 3 tabs
+# (should probably use something similar to render_tab_labels and draw_button for this?)
+
+# if you need to render a screen make the functions for that screen here
+# TODO: update and rework settings overlay
 def render_settings_overlay(screen: pygame.Surface, font: pygame.font.Font) -> None:
     global settings_buttons
     settings_buttons = {}
@@ -345,7 +347,9 @@ def render_settings_overlay(screen: pygame.Surface, font: pygame.font.Font) -> N
     draw_button(screen, font, settings_buttons["angle_toggle"], "Toggle Mode")
     draw_button(screen, font, settings_buttons["size_prev"], "<")
     draw_button(screen, font, settings_buttons["size_next"], ">")
-#TODO: decide what to do with the AST rendering section
+
+
+# TODO: decide what to do with the AST rendering section
 def render_ast_overlay(screen: pygame.Surface, font: pygame.font.Font) -> None:
     global ast_buttons
     ast_buttons = {}
@@ -363,11 +367,11 @@ def render_ast_overlay(screen: pygame.Surface, font: pygame.font.Font) -> None:
     title = font.render("AST Visualizer", True, (0, 0, 0))
     screen.blit(title, (panel_x + 10, panel_y + 10))
 
-    #ast_buttons["toggle_ast"] = pygame.Rect(panel_x + panel_w - 110, panel_y + 8, 90, 28)
+    # ast_buttons["toggle_ast"] = pygame.Rect(panel_x + panel_w - 110, panel_y + 8, 90, 28)
     ast_buttons["ast_prev"] = pygame.Rect(panel_x + 10, panel_y + 40, 35, 30)
     ast_buttons["ast_next"] = pygame.Rect(panel_x + 50, panel_y + 40, 35, 30)
 
-    #draw_button(screen, font, ast_buttons["toggle_ast"], "Hide")
+    # draw_button(screen, font, ast_buttons["toggle_ast"], "Hide")
     draw_button(screen, font, ast_buttons["ast_prev"], "<")
     draw_button(screen, font, ast_buttons["ast_next"], ">")
 
@@ -390,11 +394,13 @@ def render_ast_overlay(screen: pygame.Surface, font: pygame.font.Font) -> None:
         line_surface = font.render(lines[i], True, (20, 20, 20))
         screen.blit(line_surface, (panel_x + 10, panel_y + 85 + 20 * i))
 
+
 def apply_screen_size_from_index(index: int) -> None:
     global SCREEN_SIZE_INDEX, WIDTH, HEIGHT
     SCREEN_SIZE_INDEX = index % len(SCREEN_SIZE_OPTIONS)
     WIDTH, HEIGHT = SCREEN_SIZE_OPTIONS[SCREEN_SIZE_INDEX]
     calculate_draw_bounds()
+
 
 def cycle_ast_selection(direction: int) -> None:
     global AST_SELECTED_ID
@@ -408,7 +414,8 @@ def cycle_ast_selection(direction: int) -> None:
     current_index = ids.index(AST_SELECTED_ID)
     AST_SELECTED_ID = ids[(current_index + direction) % len(ids)]
 
-    #COMMENTS SHOULD BE ADDED TO SECTION ABOVE
+    # COMMENTS SHOULD BE ADDED TO SECTION ABOVE
+
 
 # --- MAIN EXECUTION ---
 if __name__ == "__main__":
@@ -424,14 +431,12 @@ if __name__ == "__main__":
 
     # Generate a static surface to hold the math grid so UI doesn't lag
 
-
     update_functions()
     if len(functionsList) > 0:
         AST_SELECTED_ID = functionsList[0][0]
     rerender_graph_surface(x_coords, y_coords)
 
     ui_fields = [DataEntryField(i, functionsList) for i in range(len(functionsList) + 1)]
-
 
     running = True
     while running:
@@ -455,7 +460,7 @@ if __name__ == "__main__":
                 rerender_graph_surface(x_coords, y_coords)
 
             if event.type == pygame.MOUSEBUTTONDOWN:
-                    #TODO (optional): resizing side menu
+                # TODO (optional): resizing side menu
                 mouse_pos = pygame.mouse.get_pos()
 
                 for i in range(5):
@@ -465,11 +470,11 @@ if __name__ == "__main__":
 
                 # Check if user clicked inside any UI field
                 if current_panel == 'Functions':
-                        #TODO: allow scrolling to see the full function (maybe don't implement here in the code)
-                        
+                    # TODO: allow scrolling to see the full function (maybe don't implement here in the code)
+
                     clicked_any_field = False
                     for field in ui_fields:
-                        #TODO: allow users to move around entry fields (applies for all 4 tabs) and when one gets deleted, it removes that text thing and shifts the others
+                        # TODO: allow users to move around entry fields (applies for all 4 tabs) and when one gets deleted, it removes that text thing and shifts the others
                         if field.rect.collidepoint(mouse_pos):
                             clicked_any_field = True
                             needs_redraw = field.handle_click(mouse_pos)
@@ -485,28 +490,26 @@ if __name__ == "__main__":
                             if field.editing_id or field.editing_data:
                                 field.cancel()
 
-
                     # If they clicked entirely outside the UI sidebar, cancel everything
                     if not clicked_any_field:
                         for field in ui_fields: field.cancel()
 
-                #TODO: the other 3 panels
+                # TODO: the other 3 panels
                 if current_panel == 'Colours':
-                    #deal with buttons here
-                    continue
-                        
-                if current_panel == 'Restricions':
-                    #deal with buttons here
-                    continue
-                        
-                if current_panel == 'Draw':
-                    #deal with buttons here
+                    # deal with buttons here
                     continue
 
-                
+                if current_panel == 'Restricions':
+                    # deal with buttons here
+                    continue
+
+                if current_panel == 'Draw':
+                    # deal with buttons here
+                    continue
+
                 if current_panel == 'Settings':
-                        #TODO: import-export of text
-                        #Remember that import should just create new lines
+                    # TODO: import-export of text
+                    # Remember that import should just create new lines
                     if settings_buttons.get("angle_toggle") and settings_buttons["angle_toggle"].collidepoint(
                             mouse_pos):
                         ANGLE_MODE = "degrees" if ANGLE_MODE == "radians" else "radians"
@@ -521,14 +524,14 @@ if __name__ == "__main__":
                         screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
                         rerender_graph_surface(x_coords, y_coords)
 
-                #if SHOW_AST:
-                    #if ast_buttons.get("toggle_ast") and ast_buttons["toggle_ast"].collidepoint(mouse_pos):
-                    #    SHOW_AST = False
+                # if SHOW_AST:
+                # if ast_buttons.get("toggle_ast") and ast_buttons["toggle_ast"].collidepoint(mouse_pos):
+                #    SHOW_AST = False
                 #    if ast_buttons.get("ast_prev") and ast_buttons["ast_prev"].collidepoint(mouse_pos):
                 #        cycle_ast_selection(-1)
                 #    elif ast_buttons.get("ast_next") and ast_buttons["ast_next"].collidepoint(mouse_pos):
                 #        cycle_ast_selection(1)
-                #if toggle_ast_button.collidepoint(mouse_pos) and current_panel == 'Functions':
+                # if toggle_ast_button.collidepoint(mouse_pos) and current_panel == 'Functions':
                 #    SHOW_AST = not SHOW_AST
 
             if event.type == pygame.KEYDOWN:
@@ -540,10 +543,10 @@ if __name__ == "__main__":
         if current_panel == 'Functions':
             for field in ui_fields:
                 field.draw(screen)
-            #pygame.draw.rect(screen, (225, 225, 225), toggle_ast_button)
-            #pygame.draw.rect(screen, (0, 0, 0), toggle_ast_button, 2)
-            #label = font.render("Toggle AST", True, (0, 0, 0))
-            #screen.blit(label, (195, 7))
+            # pygame.draw.rect(screen, (225, 225, 225), toggle_ast_button)
+            # pygame.draw.rect(screen, (0, 0, 0), toggle_ast_button, 2)
+            # label = font.render("Toggle AST", True, (0, 0, 0))
+            # screen.blit(label, (195, 7))
         elif current_panel == 'Settings':
             render_settings_overlay(screen, font)
 
