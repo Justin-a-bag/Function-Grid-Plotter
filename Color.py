@@ -16,7 +16,7 @@ class Color:
         self.green = green
         self.blue = blue
 
-    def getColorTuple(self, zval: float) -> tuple:
+    def getColorTuple(self, zval: float,angle_mode="potato") -> tuple:
         """
         returns the color tuple that corresponds to the color at any specific location
         remember that color is a tuple of 3 integers representing rgb values
@@ -25,7 +25,7 @@ class Color:
         can you guys decide if we should just drop immediately to 0/255 or use a 1-1 mapping system?
         also if we should check for absolute max/min values and scale values accordingly?
         """
-        rval, gval, bval = self.red.evaluate(zval, 0), self.green.evaluate(zval, 0), self.blue.evaluate(zval, 0)
+        rval, gval, bval = self.red.evaluate(zval, 0,angle_mode), self.green.evaluate(zval, 0,angle_mode), self.blue.evaluate(zval, 0,angle_mode)
 
         if any(c == d for c in [rval, gval, bval] for d in ['invalid', 'nan']):
             # THIS SHOULD RETURN A BASE NULL VALUE
