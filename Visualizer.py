@@ -66,6 +66,7 @@ def calculate_draw_bounds():
     Forces the drawing area to remain the correct ratio to prevent stretching.
     This will need to be edited to allow for rectangular grids
     """
+    #TODO: calculate draw bounds based on the dimensions of the grid rather than a square
     global DRAW_MIN_X, DRAW_MAX_X, DRAW_MIN_Y, DRAW_MAX_Y
 
     # Calculate available space outside the 300px sidebar
@@ -169,6 +170,7 @@ class DataEntryField:
         return False
 
     def handle_keydown(self, event):
+            #TODO: improve quality of life (holding backspace, arrow keys)
         if self.editing_id:
             if event.key == pygame.K_BACKSPACE:
                 self.id_str = self.id_str[:-1]
@@ -266,6 +268,7 @@ def update_functions() -> None:
 
 
 def render_grid(surface: pygame.Surface, xpoints: list[float], ypoints: list[float]):
+        #TODO: fix the new white lines appearing bug
     surface.fill((255, 255, 255))
     cell_w = (DRAW_MAX_X - DRAW_MIN_X) / len(xpoints)
     cell_h = (DRAW_MAX_Y - DRAW_MIN_Y) / len(ypoints)
@@ -285,9 +288,8 @@ def render_grid(surface: pygame.Surface, xpoints: list[float], ypoints: list[flo
                         pygame.draw.rect(surface, squarecolor, (screen_x, screen_y, max(1.0, cell_w), max(1.0, cell_h)))
 
 
-"""
-ADD COMMENTS TO THIS
-"""
+
+#TODO: add comments to this god forsaken code stretch
 def rerender_graph_surface(x_coords, y_coords):
     global GRAPH_SURFACE
     GRAPH_SURFACE = pygame.Surface((WIDTH, HEIGHT))
@@ -311,8 +313,11 @@ def draw_button(screen: pygame.Surface, font: pygame.font.Font, rect: pygame.Rec
     text_rect = text_surface.get_rect(center=rect.center)
     screen.blit(text_surface, text_rect)
 
-#if you need to render a screen make the functions for that screen here
+#TODO: the UI for the other 3 tabs 
+#(should probably use something similar to render_tab_labels and draw_button for this?)
 
+#if you need to render a screen make the functions for that screen here
+#TODO: update and rework settings overlay
 def render_settings_overlay(screen: pygame.Surface, font: pygame.font.Font) -> None:
     global settings_buttons
     settings_buttons = {}
@@ -338,7 +343,7 @@ def render_settings_overlay(screen: pygame.Surface, font: pygame.font.Font) -> N
     draw_button(screen, font, settings_buttons["angle_toggle"], "Toggle Mode")
     draw_button(screen, font, settings_buttons["size_prev"], "<")
     draw_button(screen, font, settings_buttons["size_next"], ">")
-
+#TODO: decide what to do with the AST rendering section
 def render_ast_overlay(screen: pygame.Surface, font: pygame.font.Font) -> None:
     global ast_buttons
     ast_buttons = {}
@@ -448,6 +453,7 @@ if __name__ == "__main__":
                 rerender_graph_surface(x_coords, y_coords)
 
             if event.type == pygame.MOUSEBUTTONDOWN:
+                    #TODO (optional): resizing side menu
                 mouse_pos = pygame.mouse.get_pos()
 
                 for i in range(5):
@@ -457,6 +463,7 @@ if __name__ == "__main__":
 
                 # Check if user clicked inside any UI field
                 if current_panel == 'Functions':
+                        #TODO: allow scrolling to see the full function (maybe don't implement here in the code)
                     clicked_any_field = False
                     for field in ui_fields:
                         if field.rect.collidepoint(mouse_pos):
@@ -478,7 +485,8 @@ if __name__ == "__main__":
                     # If they clicked entirely outside the UI sidebar, cancel everything
                     if not clicked_any_field:
                         for field in ui_fields: field.cancel()
-                                
+
+                #TODO: the other 3 panels
                 if current_panel == 'Colours':
                     #deal with buttons here
                     continue
