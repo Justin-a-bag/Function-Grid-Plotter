@@ -16,13 +16,13 @@ class Boundary:
         self.bounder = boundary
         self.checkSmaller = checkSmaller
 
-    def inBounds(self, x: float, y: float) -> bool:
+    def inBounds(self, x: float, y: float,angle_mode="potato") -> bool:
         """
         returns whether or not the x and y values are in bounds as specified by the boundary provided earlier
         yeah idk guys it does what it says
         """
         # i think the code is pretty readable just like look at it ig
-        squarevalue = float(self.bounder.evaluate(x, y))
+        squarevalue = float(self.bounder.evaluate(x, y,angle_mode))
         # you guys can decide if we actually want an inclusive/exclusive check for squarevalue right now it's inclusive
         if not self.checkSmaller:
             return squarevalue >= 0
