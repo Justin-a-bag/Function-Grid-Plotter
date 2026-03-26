@@ -23,14 +23,16 @@ current_panel = 'Functions'
 # --- GLOBAL STATE ---
 # Note: IDs here do NOT contain the semicolon.
 # Semicolons are only used inside the math strings (e.g., "sin(;eq)")
+
+#names that are _list are edited by the user, dicts and finals are edited by the code
 functionsList = [
-        ("eq", "sin(x)"),
+        ("eq", "sin(x)"),#sample line
         ("r", "255((x-(cos(3.7(x+0.8))/3))/2.8+1.28)"),
         ("g", "255(sin(1.5(x+pi/2))/2.8+0.5)"),
         ("b", "255(e^(-(3(x+0.99))^2)/3-x/9+0.1)"),
         ("rest", "1")
     ]
-
+#"arctan(2sin(-2x-y/8+cos(3y-x-sin(cos(sin(sin(x*y)+x))+x-y+arccot(x)*arctan(y))))+frac{(x^{2}+\frac{y^{2}}{14})}{3}-(\frac{100}{x^{2}+y^{2}})+e^{-4-y})"
 functionsDict = {}
 colorsList = [("my_color", "r", "g", "b")]
 colorsDict = {}
