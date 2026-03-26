@@ -464,8 +464,10 @@ if __name__ == "__main__":
                 # Check if user clicked inside any UI field
                 if current_panel == 'Functions':
                         #TODO: allow scrolling to see the full function (maybe don't implement here in the code)
+                        
                     clicked_any_field = False
                     for field in ui_fields:
+                        #TODO: allow users to move around entry fields (applies for all 4 tabs) and when one gets deleted, it removes that text thing and shifts the others
                         if field.rect.collidepoint(mouse_pos):
                             clicked_any_field = True
                             needs_redraw = field.handle_click(mouse_pos)
@@ -501,6 +503,8 @@ if __name__ == "__main__":
 
                 
                 if current_panel == 'Settings':
+                        #TODO: import-export of text
+                        #Remember that import should just create new lines
                     if settings_buttons.get("angle_toggle") and settings_buttons["angle_toggle"].collidepoint(
                             mouse_pos):
                         ANGLE_MODE = "degrees" if ANGLE_MODE == "radians" else "radians"
