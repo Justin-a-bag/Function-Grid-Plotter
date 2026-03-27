@@ -271,7 +271,7 @@ def update_functions() -> None:
         # Check for Math Errors vs Size Warnings
         if eq.tree.op == 'invalid' or eq.tree.op == 'potato':
             error_states[i] = ((200, 50, 50), "Math Error: Invalid syntax or missing arguments.")
-        elif eq.size() > 100:
+        elif eq.size(functionsDict,MAX_DEPTH) > 100:
             error_states[i] = ((50, 100, 200), "Warning: Large function tree. May impact performance.")
         else:
             error_states[i] = ((50, 200, 50), "Valid")  # Green
