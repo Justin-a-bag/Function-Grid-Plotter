@@ -275,10 +275,10 @@ class Equation:
 
 
     # returns size of the tree (number of nodes)
-    def size(self, env: dict = None) -> int:
+    def size(self, env: dict = None, depth = 50) -> int:
         if env is None:
             env = {}
-        return self.tree.size(env)
+        return self.tree.size(env, depth)
 
     def ast_to_string(self) -> str:
         return self.tree.ast_to_string()
@@ -293,38 +293,33 @@ class Node:
         # children must be an ordered list
         self.children = children if children is not None else []
 
-    def size(self, env: dict = None) -> int:
+    def size(self, env: dict = None, depth = 50) -> int:
         total_nodes = 0
 
-        # Stack holds tuples of: (Node, set_of_active_variables)
-        # Using a set prevents infinite loops when variables reference themselves!
-        stack = [(self, set())]
+        # Stack holds tuples of: (Node, current_depth)
+        stack = [(self, depth)]
 
         while stack:
             # Pop the most recent node off our list
-            current_node, active_vars = stack.pop()
+            current_node, current_depth = stack.pop()
             total_nodes += 1
+
+            # If we cross the depth threshold, we count the node as a leaf (fallback) and stop expanding
+            if current_depth < 0:
+                continue
 
             # Check if this node is a UI variable
             if isinstance(current_node.op, str) and current_node.op.startswith('~') and current_node.op.endswith('~'):
                 var_name = current_node.op[1:-1]
 
                 if env and var_name in env:
-                    # CYCLE DETECTION: If we are already expanding this variable in this branch, we hit an infinite loop! Stop digging.
-                    if var_name in active_vars:
-                        continue
-
-                    # Create a new active set for this specific branch
-                    new_active = active_vars.copy()
-                    new_active.add(var_name)
-
-                    # Push the referenced equation's tree onto the stack
-                    stack.append((env[var_name].tree, new_active))
+                    # Push the referenced equation's tree onto the stack, and DECREMENT the depth
+                    stack.append((env[var_name].tree, current_depth - 1))
 
             else:
-                # Standard math node: push all children to the stack
+                # Standard math node: push all children to the stack (depth stays the same)
                 for child in current_node.children:
-                    stack.append((child, active_vars))
+                    stack.append((child, current_depth))
 
         return total_nodes
 
