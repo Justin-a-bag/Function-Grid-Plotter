@@ -460,7 +460,7 @@ if __name__ == "__main__":
     #HOLY SHIT IS THAT A GEOMETRY DASH REFERENCE???????????
     ystep = (Y_MATH_MAX - Y_MATH_MIN) / Y_GRID_RESOLUTION
     x_coords = [X_MATH_MIN + 1 + i * xstep for i in range(X_GRID_RESOLUTION)]
-    y_coords = [X_MATH_MIN + j * ystep for j in range(X_GRID_RESOLUTION)]
+    y_coords = [Y_MATH_MIN + j * ystep for j in range(Y_GRID_RESOLUTION)]
 
     # Generate a static surface to hold the math grid so UI doesn't lag
 
