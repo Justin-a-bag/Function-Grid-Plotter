@@ -35,7 +35,7 @@ ast_buttons = {}
 # toggle_ast_button = pygame.Rect(180, 0, 120, 30)
 GRAPH_SURFACE = None
 AST_WRAP_WIDTH = 55
-
+MAX_DEPTH=0
 scroll_y_vals=[0,0,0,0]
 #use scroll_y_vals for the scrolling amounts on each tab
 
@@ -309,9 +309,9 @@ def render_grid(surface: pygame.Surface, xpoints: list[float], ypoints: list[flo
             math_x = xpoints[i]
             math_y = ypoints[j]
             for curFunc in drawFinal:
-                if curFunc[2].inBounds(math_x, math_y,ANGLE_MODE,functionsDict,0):
-                    z = curFunc[0].evaluate(math_x, math_y,ANGLE_MODE,functionsDict,0)
-                    squarecolor = curFunc[1].getColorTuple(z)
+                if curFunc[2].inBounds(math_x, math_y, ANGLE_MODE, functionsDict, MAX_DEPTH):
+                    z = curFunc[0].evaluate(math_x, math_y, ANGLE_MODE, functionsDict, MAX_DEPTH)
+                    squarecolor = curFunc[1].getColorTuple(z,ANGLE_MODE, functionsDict, MAX_DEPTH)
                     screen_x = DRAW_MIN_X + i * cell_w
                     screen_y = DRAW_MAX_Y - ((j + 1) * cell_h)
 
