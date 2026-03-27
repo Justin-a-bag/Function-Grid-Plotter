@@ -96,6 +96,7 @@ class DataEntryField:
         self.Y = TEXTBOX_Y + (index * TEXTBOX_HEIGHT)
         self.y = self.Y
         self.rect = pygame.Rect(0, self.y, TEXTBOX_WIDTH, TEXTBOX_HEIGHT)
+        #TODO: autoscroll text to the right when you click on it
         self.scroll_x = 0
 
         # Determine if this is a populated field or the "New" generation field at the bottom
@@ -188,7 +189,11 @@ class DataEntryField:
         return False
 
     def handle_keydown(self, event):
-        # TODO: improve quality of life (holding backspace, arrow keys)
+        # TODO: improve quality of life (holding backspace & arrow keys)
+
+        
+
+        #TODO: editing inside of the line instead of strictly at the end
         if self.editing_id:
             if event.key == pygame.K_BACKSPACE:
                 self.id_str = self.id_str[:-1]
