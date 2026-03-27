@@ -252,21 +252,33 @@ class Equation:
         # The very last item on the output stack is the Root of our tree!
         self.tree = output_stack[0]
 
-    def evaluate(self, x: float, y: float, angle_mode = "potato",env:dict = None, depth = 0) -> float:
+    def evaluate(self, x: float, y: float, angle_mode = "potato",env:dict = None, depth = 50) -> float:
         # this is the tree traversal step; the entire thing should return a float
         # evaluate the trees on the upper levels then evaluate this bottom node you get the point
         # eliminates possibility of returning a complex value
-        if depth>100:
-            return x+y
+        if depth<0:
+            return (x**2+y**2)**0.5
+
         if env is None:
             env = {}
+
         mode = False if angle_mode == "degrees" else True
-        result = self.tree.evaluate(x, y, mode, env,depth)
-        return result if not isinstance(result, complex) else 'nan'
+
+        try:
+            result = self.tree.evaluate(x, y, mode, env)
+
+            return result if not isinstance(result, complex) else 'nan'
+
+        except RecursionError:
+            # We hit the stack overflow!
+            return (x**2+y**2)**0.5
+
 
     # returns size of the tree (number of nodes)
-    def size(self):
-        return self.tree.size()
+    def size(self, env: dict = None) -> int:
+        if env is None:
+            env = {}
+        return self.tree.size(env)
 
     def ast_to_string(self) -> str:
         return self.tree.ast_to_string()
@@ -281,9 +293,40 @@ class Node:
         # children must be an ordered list
         self.children = children if children is not None else []
 
-    def size(self):
-        # Quality of life method: returns size of the tree
-        return 1 + sum([c.size() for c in self.children])
+    def size(self, env: dict = None) -> int:
+        total_nodes = 0
+
+        # Stack holds tuples of: (Node, set_of_active_variables)
+        # Using a set prevents infinite loops when variables reference themselves!
+        stack = [(self, set())]
+
+        while stack:
+            # Pop the most recent node off our list
+            current_node, active_vars = stack.pop()
+            total_nodes += 1
+
+            # Check if this node is a UI variable
+            if isinstance(current_node.op, str) and current_node.op.startswith('~') and current_node.op.endswith('~'):
+                var_name = current_node.op[1:-1]
+
+                if env and var_name in env:
+                    # CYCLE DETECTION: If we are already expanding this variable in this branch, we hit an infinite loop! Stop digging.
+                    if var_name in active_vars:
+                        continue
+
+                    # Create a new active set for this specific branch
+                    new_active = active_vars.copy()
+                    new_active.add(var_name)
+
+                    # Push the referenced equation's tree onto the stack
+                    stack.append((env[var_name].tree, new_active))
+
+            else:
+                # Standard math node: push all children to the stack
+                for child in current_node.children:
+                    stack.append((child, active_vars))
+
+        return total_nodes
 
     def ast_to_string(self) -> str:
 
@@ -305,163 +348,166 @@ class Node:
         ni = ni[:-1] + ")"
         return ni
 
-    def evaluate(self, x, y, use_radians=True, env:dict = None, depth = 0):
-        # Evaluate children first
-        vals = [c.evaluate(x, y, use_radians,env,depth) for c in self.children]
+    def evaluate(self, x, y, use_radians=True, env:dict = None, depth = 50):
+        try:
+            # Evaluate children first
+            vals = [c.evaluate(x, y, use_radians,env,depth) for c in self.children]
 
-        if self.op == 'invalid' or any(c == 'invalid' for c in vals):
-            # invalid input error
+            if self.op == 'invalid' or any(c == 'invalid' for c in vals):
+                # invalid input error
+                return 'invalid'
+            if self.op == 'nan' or any(c == 'nan' for c in vals):
+                # not a number error
+                return 'nan'
+
+            # Every time you add a function to PRECEDENCE add its implementation down here
+            # base cases
+            if isinstance(self.op, float):
+                return float(self.op)
+            # this is a surprise tool that will help us later
+            if isinstance(self.op, complex):
+                return complex(self.op)
+            if self.op == '':
+                return 0.0
+            if self.op == 'x':
+                return x
+            if self.op == 'y':
+                return y
+            if self.op == 'pi':
+                return math.pi
+            if self.op == 'e':
+                return math.e
+
+            if isinstance(self.op, str) and self.op.startswith('~') and self.op.endswith('~'):
+                var_name = self.op[1:-1]  # Strip the tildes to match dictionary keys
+
+                # If the variable exists in our UI dictionary
+                if env and var_name in env:
+                    # Recursively evaluate the nested equation, increasing depth by 1
+                    return env[var_name].evaluate(x, y, "radians" if use_radians else "degrees", env, depth - 1)
+                else:
+                    return 'nan'  # Variable hasn't been defined yet
+
+
+            # simple operations
+            if self.op == '+':
+                return vals[0] + vals[1]
+            if self.op == '-':
+                return vals[0] - vals[1]
+            if self.op == '*':
+                return vals[0] * vals[1]
+            if self.op == '/':
+                return vals[0] / vals[1] if vals[1] != 0 else 'nan'
+            # ive decided that we will allow complex values when returning this thing because i'm lazy
+            if self.op == '^':
+                return vals[0] ** vals[1]
+            if self.op == '%':
+                return vals[0] % vals[1] if vals[1] > 0 else 'nan'
+
+            # variations on transcendentals
+            if self.op == 'exp':
+                return math.e ** vals[0]
+            if self.op == 'frac':
+                return vals[0]/vals[1] if vals[1] != 0 else 'nan'
+            if self.op == 'ln':
+                return math.log(vals[0]) if vals[0] > 0 else 'nan'
+            if self.op == 'log':
+                return math.log(vals[1], vals[0]) if (vals[0] > 0 and vals[0]!=1 and vals[1]>0) else 'nan'
+            if self.op == 'sqrt':
+                return math.sqrt(vals[0]) if vals[0] >= 0 else 'nan'
+            if self.op == 'cbrt':
+                return vals[0] ** (1 / 3)
+
+            #If measurements in degrees, change that
+            trig_input = vals[0] if len(vals)>0 else None
+            if use_radians == False and self.op in ('sin', 'cos', 'tan', 'sec', 'csc', 'cot'):
+                trig_input = math.radians(vals[0])
+            # Unrestricted Trig
+            if self.op == 'sin':
+                return math.sin(trig_input)
+            if self.op == 'cos':
+                return math.cos(trig_input)
+            if self.op == 'arctan':
+                result = math.atan(vals[0])
+                return math.degrees(result) if use_radians == False else result
+            if self.op == 'arccot':
+                result = math.pi / 2 - math.atan(vals[0])
+                return math.degrees(result) if use_radians == False else result
+
+            # trig with bad values
+            if self.op == 'cot':
+                return math.tan(math.pi / 2 - trig_input) if math.sin(trig_input) != 0.0 else 'nan'
+            if self.op == 'tan':
+                return math.tan(trig_input) if math.cos(trig_input) != 0.0 else 'nan'
+            if self.op == 'csc':
+                return 1 / math.sin(trig_input) if math.sin(trig_input) != 0.0 else 'nan'
+            if self.op == 'sec':
+                return 1 / math.cos(trig_input) if math.cos(trig_input) != 0.0 else 'nan'
+            if self.op == 'arcsin':
+                result = math.asin(vals[0]) if vals[0] ** 2 <= 1 else 'nan'
+                return math.degrees(result) if result != 'nan' and use_radians == False else result
+            if self.op == 'arccos':
+                result = math.acos(vals[0]) if vals[0] ** 2 <= 1 else 'nan'
+                return math.degrees(result) if result != 'nan' and use_radians == False else result
+            if self.op == 'arcsec':
+                result = math.acos(1 / vals[0]) if vals[0] ** 2 >= 1 else 'nan'
+                return math.degrees(result) if result != 'nan' and use_radians == False else result
+            if self.op == 'arccsc':
+                result = math.asin(1 / vals[0]) if vals[0] ** 2 >= 1 else 'nan'
+                return math.degrees(result) if result != 'nan' and use_radians == False else result
+
+            # unrestricted hyperbolic trig
+            if self.op == 'sinh':
+                return math.sinh(vals[0])
+            if self.op == 'cosh':
+                return math.cosh(vals[0])
+            if self.op == 'tanh':
+                return math.tanh(vals[0])
+            if self.op == 'sech':
+                return 1 / math.cosh(vals[0])
+            if self.op == 'arcsinh':
+                return math.asinh(vals[0])
+
+            # hyperbolic trig with bad values
+            if self.op == 'csch':
+                return 1 / math.sin(vals[0]) if vals[0] != 0.0 else 'nan'
+            if self.op == 'coth':
+                return 1 / math.tan(math.pi / 2) if vals[0] != 0.0 else 'nan'
+            if self.op == 'arccosh':
+                return math.acosh(vals[0]) if x >= 1 else 'nan'
+            if self.op == 'arcsech':
+                return math.acosh(1 / vals[0]) if x > 1 else 'nan'
+            if self.op == 'arccsc':
+                return math.asin(1 / vals[0]) if x ** 2 != 1 else 'nan'
+            if self.op == 'arctanh':
+                return math.atanh(vals[0]) if x ** 2 < 1 else 'nan'
+            if self.op == 'arccoth':
+                return math.atanh(1 / vals[0]) if x ** 2 > 1 else 'nan'
+
+            # number theory
+            if self.op == 'abs':
+                return abs(vals[0])
+            if self.op == 'sign':
+                return -1 if vals[0] < 0 else 1 if vals[0] > 0 else 0
+            if self.op == 'floor':
+                return float(math.floor(vals[0]))
+            if self.op == 'ceil':
+                return float(math.ceil(vals[0]))
+            if self.op == 'round':
+                return float(round(vals[0]))
+            if self.op == 'min':
+                return min(vals[0], vals[1])
+            if self.op == 'max':
+                return max(vals[0], vals[1])
+            if self.op == 'clamp':
+                return min(max(vals[0], vals[1]), vals[2])
+
+
+            # Add other things after here
+            # grammar isn't too important in this step since we can make the grammar whatever we want
             return 'invalid'
-        if self.op == 'nan' or any(c == 'nan' for c in vals):
-            # not a number error
+        except OverflowError:
             return 'nan'
-
-        # Every time you add a function to PRECEDENCE add its implementation down here
-        # base cases
-        if isinstance(self.op, float):
-            return float(self.op)
-        # this is a surprise tool that will help us later
-        if isinstance(self.op, complex):
-            return complex(self.op)
-        if self.op == '':
-            return 0.0
-        if self.op == 'x':
-            return x
-        if self.op == 'y':
-            return y
-        if self.op == 'pi':
-            return math.pi
-        if self.op == 'e':
-            return math.e
-
-        if isinstance(self.op, str) and self.op.startswith('~') and self.op.endswith('~'):
-            var_name = self.op[1:-1]  # Strip the tildes to match dictionary keys
-
-            # If the variable exists in our UI dictionary
-            if env and var_name in env:
-                # Recursively evaluate the nested equation, increasing depth by 1
-                return env[var_name].evaluate(x, y, "radians" if use_radians else "degrees", env, depth + 1)
-            else:
-                return 'nan'  # Variable hasn't been defined yet
-
-
-        # simple operations
-        if self.op == '+':
-            return vals[0] + vals[1]
-        if self.op == '-':
-            return vals[0] - vals[1]
-        if self.op == '*':
-            return vals[0] * vals[1]
-        if self.op == '/':
-            return vals[0] / vals[1] if vals[1] != 0 else 'nan'
-        # ive decided that we will allow complex values when returning this thing because i'm lazy
-        if self.op == '^':
-            return vals[0] ** vals[1]
-        if self.op == '%':
-            return vals[0] % vals[1] if vals[1] > 0 else 'nan'
-
-        # variations on transcendentals
-        if self.op == 'exp':
-            return math.e ** vals[0]
-        if self.op == 'frac':
-            return vals[0]/vals[1] if vals[1] != 0 else 'nan'
-        if self.op == 'ln':
-            return math.log(vals[0]) if vals[0] > 0 else 'nan'
-        if self.op == 'log':
-            return math.log(vals[1], vals[0]) if (vals[0] > 0 and vals[0]!=1 and vals[1]>0) else 'nan'
-        if self.op == 'sqrt':
-            return math.sqrt(vals[0]) if vals[0] >= 0 else 'nan'
-        if self.op == 'cbrt':
-            return vals[0] ** (1 / 3)
-
-        #If measurements in degrees, change that
-        trig_input = vals[0] if len(vals)>0 else None
-        if use_radians == False and self.op in ('sin', 'cos', 'tan', 'sec', 'csc', 'cot'):
-            trig_input = math.radians(vals[0])
-        # Unrestricted Trig
-        if self.op == 'sin':
-            return math.sin(trig_input)
-        if self.op == 'cos':
-            return math.cos(trig_input)
-        if self.op == 'arctan':
-            result = math.atan(vals[0])
-            return math.degrees(result) if use_radians == False else result
-        if self.op == 'arccot':
-            result = math.pi / 2 - math.atan(vals[0])
-            return math.degrees(result) if use_radians == False else result
-
-        # trig with bad values
-        if self.op == 'cot':
-            return math.tan(math.pi / 2 - trig_input) if math.sin(trig_input) != 0.0 else 'nan'
-        if self.op == 'tan':
-            return math.tan(trig_input) if math.cos(trig_input) != 0.0 else 'nan'
-        if self.op == 'csc':
-            return 1 / math.sin(trig_input) if math.sin(trig_input) != 0.0 else 'nan'
-        if self.op == 'sec':
-            return 1 / math.cos(trig_input) if math.cos(trig_input) != 0.0 else 'nan'
-        if self.op == 'arcsin':
-            result = math.asin(vals[0]) if vals[0] ** 2 <= 1 else 'nan'
-            return math.degrees(result) if result != 'nan' and use_radians == False else result
-        if self.op == 'arccos':
-            result = math.acos(vals[0]) if vals[0] ** 2 <= 1 else 'nan'
-            return math.degrees(result) if result != 'nan' and use_radians == False else result
-        if self.op == 'arcsec':
-            result = math.acos(1 / vals[0]) if vals[0] ** 2 >= 1 else 'nan'
-            return math.degrees(result) if result != 'nan' and use_radians == False else result
-        if self.op == 'arccsc':
-            result = math.asin(1 / vals[0]) if vals[0] ** 2 >= 1 else 'nan'
-            return math.degrees(result) if result != 'nan' and use_radians == False else result
-
-        # unrestricted hyperbolic trig
-        if self.op == 'sinh':
-            return math.sinh(vals[0])
-        if self.op == 'cosh':
-            return math.cosh(vals[0])
-        if self.op == 'tanh':
-            return math.tanh(vals[0])
-        if self.op == 'sech':
-            return 1 / math.cosh(vals[0])
-        if self.op == 'arcsinh':
-            return math.asinh(vals[0])
-
-        # hyperbolic trig with bad values
-        if self.op == 'csch':
-            return 1 / math.sin(vals[0]) if vals[0] != 0.0 else 'nan'
-        if self.op == 'coth':
-            return 1 / math.tan(math.pi / 2) if vals[0] != 0.0 else 'nan'
-        if self.op == 'arccosh':
-            return math.acosh(vals[0]) if x >= 1 else 'nan'
-        if self.op == 'arcsech':
-            return math.acosh(1 / vals[0]) if x > 1 else 'nan'
-        if self.op == 'arccsc':
-            return math.asin(1 / vals[0]) if x ** 2 != 1 else 'nan'
-        if self.op == 'arctanh':
-            return math.atanh(vals[0]) if x ** 2 < 1 else 'nan'
-        if self.op == 'arccoth':
-            return math.atanh(1 / vals[0]) if x ** 2 > 1 else 'nan'
-
-        # number theory
-        if self.op == 'abs':
-            return abs(vals[0])
-        if self.op == 'sign':
-            return -1 if vals[0] < 0 else 1 if vals[0] > 0 else 0
-        if self.op == 'floor':
-            return float(math.floor(vals[0]))
-        if self.op == 'ceil':
-            return float(math.ceil(vals[0]))
-        if self.op == 'round':
-            return float(round(vals[0]))
-        if self.op == 'min':
-            return min(vals[0], vals[1])
-        if self.op == 'max':
-            return max(vals[0], vals[1])
-        if self.op == 'clamp':
-            return min(max(vals[0], vals[1]), vals[2])
-
-
-        # Add other things after here
-        # grammar isn't too important in this step since we can make the grammar whatever we want
-        return 'invalid'
 if __name__ == "__main__":
     eq=Equation("log{2,x}")
     print(eq.evaluate(1,0))
