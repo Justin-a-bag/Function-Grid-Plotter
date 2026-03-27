@@ -452,11 +452,15 @@ if __name__ == "__main__":
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("Render Engine")
 
-    GRID_RESOLUTION = 100
-    MATH_MIN, MATH_MAX = -15.0, 15.0
-    step = (MATH_MAX - MATH_MIN) / GRID_RESOLUTION
-    x_coords = [MATH_MIN + 1 + i * step for i in range(GRID_RESOLUTION)]
-    y_coords = [MATH_MIN + j * step for j in range(GRID_RESOLUTION)]
+    X_GRID_RESOLUTION = 100
+    X_MATH_MIN, X_MATH_MAX = -15.0, 15.0
+    Y_GRID_RESOLUTION = 100
+    Y_MATH_MIN, Y_MATH_MAX = -15.0, 15.0
+    xstep = (X_MATH_MAX - X_MATH_MIN) / X_GRID_RESOLUTION
+    #HOLY SHIT IS THAT A GEOMETRY DASH REFERENCE???????????
+    ystep = (Y_MATH_MAX - Y_MATH_MIN) / Y_GRID_RESOLUTION
+    x_coords = [X_MATH_MIN + 1 + i * xstep for i in range(X_GRID_RESOLUTION)]
+    y_coords = [X_MATH_MIN + j * ystep for j in range(X_GRID_RESOLUTION)]
 
     # Generate a static surface to hold the math grid so UI doesn't lag
 
