@@ -7,9 +7,6 @@ from Equation import Equation
 from Color import Color
 from Boundary import Boundary
 
-#Performance improvements
-sys.setrecursionlimit(5000)
-
 # Define screen and drawing boundaries
 WIDTH, HEIGHT = 1100, 800
 DRAW_MIN_X, DRAW_MAX_X = 300, WIDTH
@@ -35,16 +32,18 @@ ast_buttons = {}
 # toggle_ast_button = pygame.Rect(180, 0, 120, 30)
 GRAPH_SURFACE = None
 AST_WRAP_WIDTH = 55
-MAX_DEPTH=0
-scroll_y_vals=[0,0,0,0]
-#use scroll_y_vals for the scrolling amounts on each tab
+
+MAX_DEPTH=100
+scroll_y_vals = [0, 0, 0, 0]
+# use scroll_y_vals for the scrolling amounts on each tab
 
 # --- GLOBAL STATE ---
 # Note: IDs here do NOT contain the semicolon.
 # Semicolons are only used inside the math strings (e.g., "sin(;eq)")
 functionsList = [
     ("eq",
-     "arctan(2sin(-2x-y/8+cos(3y-x-sin(cos(sin(sin(x*y)+x))+x-y+arccot(x)*arctan(y))))+frac{(x^{2}+\frac{y^{2}}{14})}{3}-(\frac{100}{x^{2}+y^{2}})+e^{-4-y})"),
+     "(~eq~^2+x^2-y)^2+y^2-x"),
+    #arctan(2sin(-2x-y/8+cos(3y-x-sin(cos(sin(sin(x*y)+x))+x-y+arccot(x)*arctan(y))))+frac{(x^{2}+\frac{y^{2}}{14})}{3}-(\frac{100}{x^{2}+y^{2}})+e^{-4-y})
     ("r", "255((x-(cos(3.7(x+0.8))/3))/2.8+1.28)"),
     ("g", "255(sin(1.5(x+pi/2))/2.8+0.5)"),
     ("b", "255(e^(-(3(x+0.99))^2)/3-x/9+0.1)"),
@@ -99,7 +98,7 @@ class DataEntryField:
         self.Y = TEXTBOX_Y + (index * TEXTBOX_HEIGHT)
         self.y = self.Y
         self.rect = pygame.Rect(0, self.y, TEXTBOX_WIDTH, TEXTBOX_HEIGHT)
-        #TODO: autoscroll text to the right when you click on it
+        # TODO: autoscroll text to the right when you click on it
         self.scroll_x = 0
 
         # Determine if this is a populated field or the "New" generation field at the bottom
@@ -130,8 +129,8 @@ class DataEntryField:
         pygame.draw.rect(surface, bg_color, self.rect)
         pygame.draw.rect(surface, (150, 150, 150), self.rect, 1)  # Border
 
-        #Added for Scrolling, not sure if it's correct
-        self.y = self.Y+scroll_y_vals[0]
+        # Added for Scrolling, not sure if it's correct
+        self.y = self.Y + scroll_y_vals[0]
         self.rect.y = self.y
         self.id_rect.y = self.y + 10
         self.data_rect.y = self.y + 10
@@ -139,11 +138,11 @@ class DataEntryField:
 
         if self.y + TEXTBOX_HEIGHT < TABS_HEIGHT or self.y > HEIGHT:
             return
-            
+
         # 1. Error Flagging
         # Fetch the color from our global error_states dict based on this field's index.
         # Defaults to Grey if not found.
-        #TODO: blue flagging if a function is too large
+        # TODO: blue flagging if a function is too large
         flag_color = error_states.get(self.index, ((150, 150, 150), ""))[0]
         pygame.draw.circle(surface, flag_color, (15, self.y + 25), 6)
 
@@ -178,7 +177,7 @@ class DataEntryField:
             pygame.draw.rect(surface, (100, 200, 100), self.btn_enter)
             btn_txt = small_font.render("ENTER", True, (0, 0, 0))
             surface.blit(btn_txt, (self.btn_enter.x + 5, self.btn_enter.y + 10))
-        
+
     def handle_click(self, mouse_pos) -> bool:
         """Returns True if the 'Enter' button was clicked and confirmed."""
         if self.id_rect.collidepoint(mouse_pos):
@@ -194,15 +193,13 @@ class DataEntryField:
     def handle_keydown(self, event):
         # TODO: improve quality of life (holding backspace & arrow keys)
 
-        
-
-        #TODO: editing inside of the line instead of strictly at the end
+        # TODO: editing inside of the line instead of strictly at the end
         if self.editing_id:
             if event.key == pygame.K_BACKSPACE:
                 self.id_str = self.id_str[:-1]
             else:
                 self.id_str += event.unicode
-                
+
         elif self.editing_data:
             if event.key == pygame.K_BACKSPACE:
                 self.data_str = self.data_str[:-1]
@@ -212,7 +209,7 @@ class DataEntryField:
                 self.scroll_x += 10
             else:
                 self.data_str += event.unicode
-                
+
     def cancel(self):
         """Reverts the field to what it had originally without changing data."""
         self.id_str = self.backup_id
@@ -299,11 +296,10 @@ def update_functions() -> None:
 
 
 def render_grid(surface: pygame.Surface, xpoints: list[float], ypoints: list[float]):
-    # WHITE LINE BUG FIXED
+    # TODO: fix the new white lines appearing bug
     surface.fill((255, 255, 255))
     cell_w = (DRAW_MAX_X - DRAW_MIN_X) / len(xpoints)
     cell_h = (DRAW_MAX_Y - DRAW_MIN_Y) / len(ypoints)
-
     for i in range(len(xpoints)):
         for j in range(len(ypoints)):
             math_x = xpoints[i]
@@ -332,7 +328,8 @@ def rerender_graph_surface(x_coords, y_coords):
     GRAPH_SURFACE.fill((255, 255, 255))
     render_grid(GRAPH_SURFACE, x_coords, y_coords)
 
-#Draws the top 5 label things
+
+# Draws the top 5 label things
 def render_tab_labels(screen: pygame.Surface, font: pygame.font.Font) -> None:
     for i in range(len(PANELS)):
         rect = pygame.Rect(TABS_WIDTH * i, 0, TABS_WIDTH, TABS_HEIGHT)
@@ -459,11 +456,11 @@ if __name__ == "__main__":
     pygame.display.set_caption("Render Engine")
 
     X_GRID_RESOLUTION = 100
-    X_MATH_MIN, X_MATH_MAX = -15.0, 15.0
+    X_MATH_MIN, X_MATH_MAX = -2.0, 0.0
     Y_GRID_RESOLUTION = 100
-    Y_MATH_MIN, Y_MATH_MAX = -15.0, 15.0
+    Y_MATH_MIN, Y_MATH_MAX = -0.5, 1.5
     xstep = (X_MATH_MAX - X_MATH_MIN) / X_GRID_RESOLUTION
-    #HOLY SHIT IS THAT A GEOMETRY DASH REFERENCE???????????
+    # HOLY SHIT IS THAT A GEOMETRY DASH REFERENCE???????????
     ystep = (Y_MATH_MAX - Y_MATH_MIN) / Y_GRID_RESOLUTION
     x_coords = [X_MATH_MIN + 1 + i * xstep for i in range(X_GRID_RESOLUTION)]
     y_coords = [Y_MATH_MIN + j * ystep for j in range(Y_GRID_RESOLUTION)]
@@ -482,7 +479,6 @@ if __name__ == "__main__":
         # 1. ALWAYS BLIT THE CACHED MATH GRID FIRST
         if GRAPH_SURFACE is not None:
             screen.blit(GRAPH_SURFACE, (0, 0))
-        
 
         pygame.draw.rect(screen, (220, 220, 220), (0, TABS_HEIGHT, TEXTBOX_WIDTH, HEIGHT))
         # 3. HANDLE EVENTS
@@ -511,10 +507,10 @@ if __name__ == "__main__":
                     if event.button == 4:
                         scroll_y_vals[0] -= 5
                     elif event.button == 5:
-                        scroll_y_vals[0] = min(0,scroll_y_vals[0]+5)
+                        scroll_y_vals[0] = min(0, scroll_y_vals[0] + 5)
 
                     clicked_any_field = False
-                    
+
                     for field in ui_fields:
                         # TODO: allow users to move around entry fields (applies for all 4 tabs) and when one gets deleted, it removes that text thing and shifts the others
                         if field.rect.collidepoint(mouse_pos):
@@ -594,7 +590,7 @@ if __name__ == "__main__":
 
         # 2. DRAW UI TABS AND ACTIVE PANEL BACKGROUND
         render_tab_labels(screen, font)
-        
+
         render_ast_overlay(screen, font)
 
         pygame.display.flip()
