@@ -7,6 +7,9 @@ from Equation import Equation
 from Color import Color
 from Boundary import Boundary
 
+#Performance improvements
+sys.setrecursionlimit(5000)
+
 # Define screen and drawing boundaries
 WIDTH, HEIGHT = 1100, 800
 DRAW_MIN_X, DRAW_MAX_X = 300, WIDTH
