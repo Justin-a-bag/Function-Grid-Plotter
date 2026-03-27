@@ -314,7 +314,7 @@ def rerender_graph_surface(x_coords, y_coords):
     GRAPH_SURFACE.fill((255, 255, 255))
     render_grid(GRAPH_SURFACE, x_coords, y_coords)
 
-
+#Draws the top 5 label things
 def render_tab_labels(screen: pygame.Surface, font: pygame.font.Font) -> None:
     for i in range(len(PANELS)):
         rect = pygame.Rect(TABS_WIDTH * i, 0, TABS_WIDTH, TABS_HEIGHT)
