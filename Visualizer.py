@@ -142,7 +142,6 @@ class DataEntryField:
         # 1. Error Flagging
         # Fetch the color from our global error_states dict based on this field's index.
         # Defaults to Grey if not found.
-        # TODO: blue flagging if a function is too large
         flag_color = error_states.get(self.index, ((150, 150, 150), ""))[0]
         pygame.draw.circle(surface, flag_color, (15, self.y + 25), 6)
 
