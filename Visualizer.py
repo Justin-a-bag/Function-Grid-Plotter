@@ -461,8 +461,7 @@ if __name__ == "__main__":
         # 1. ALWAYS BLIT THE CACHED MATH GRID FIRST
         if GRAPH_SURFACE is not None:
             screen.blit(GRAPH_SURFACE, (0, 0))
-        # 2. DRAW UI TABS AND ACTIVE PANEL BACKGROUND
-        render_tab_labels(screen, font)
+        
 
         pygame.draw.rect(screen, (220, 220, 220), (0, TABS_HEIGHT, TEXTBOX_WIDTH, HEIGHT))
         # 3. HANDLE EVENTS
@@ -572,6 +571,9 @@ if __name__ == "__main__":
         elif current_panel == 'Settings':
             render_settings_overlay(screen, font)
 
+        # 2. DRAW UI TABS AND ACTIVE PANEL BACKGROUND
+        render_tab_labels(screen, font)
+        
         render_ast_overlay(screen, font)
 
         pygame.display.flip()
