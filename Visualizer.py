@@ -92,6 +92,7 @@ class DataEntryField:
         self.index = index
         self.y = TEXTBOX_Y + (index * TEXTBOX_HEIGHT)
         self.rect = pygame.Rect(0, self.y, TEXTBOX_WIDTH, TEXTBOX_HEIGHT)
+        self.scroll_x = 0
 
         # Determine if this is a populated field or the "New" generation field at the bottom
         if index < len(list_ref):
@@ -121,6 +122,16 @@ class DataEntryField:
         pygame.draw.rect(surface, bg_color, self.rect)
         pygame.draw.rect(surface, (150, 150, 150), self.rect, 1)  # Border
 
+        #Added for Scrolling, not sure if it's correct
+        self.y += scroll_y
+        self.rect.y = self.y
+        self.id_rect.y = self.y + 10
+        self.data_rect.y = self.y + 10
+        self.btn_enter.y = self.y + 10
+
+        if self.y + TEXTBOX_HEIGHT < TABS_HEIGHT or self.y > HEIGHT:
+            return
+            
         # 1. Error Flagging
         # Fetch the color from our global error_states dict based on this field's index.
         # Defaults to Grey if not found.
@@ -147,18 +158,19 @@ class DataEntryField:
         data_surf = font.render(display_str, True, TEXT_COLOR)
 
         # Scroll through text entry field natively via subsurface clipping
-        clip_area = pygame.Rect(0, 0, self.data_rect.width - 5, self.data_rect.height)
-        if data_surf.get_width() > clip_area.width and is_active:
-            clip_area.x = data_surf.get_width() - clip_area.width
-
+        # Added horizantal scrolling(left and right key)
+        clip_area = pygame.Rect(self.scroll_x, 0, self.data_rect.width - 5, self.data_rect.height)
         surface.blit(data_surf, (self.data_rect.x + 5, self.data_rect.y + 7), clip_area)
+
+        max_scroll = max(0, data_surf.get_width() - (self.data_rect.width - 5))
+        self.scroll_x = max(0, min(self.scroll_x, max_scroll))
 
         # 4. Draw Confirm "Enter" Button
         if is_active:
             pygame.draw.rect(surface, (100, 200, 100), self.btn_enter)
             btn_txt = small_font.render("ENTER", True, (0, 0, 0))
             surface.blit(btn_txt, (self.btn_enter.x + 5, self.btn_enter.y + 10))
-
+        
     def handle_click(self, mouse_pos) -> bool:
         """Returns True if the 'Enter' button was clicked and confirmed."""
         if self.id_rect.collidepoint(mouse_pos):
@@ -178,12 +190,17 @@ class DataEntryField:
                 self.id_str = self.id_str[:-1]
             else:
                 self.id_str += event.unicode
+                
         elif self.editing_data:
             if event.key == pygame.K_BACKSPACE:
                 self.data_str = self.data_str[:-1]
+            elif event.key == pygame.K_LEFT:
+                self.scroll_x -= 10
+            elif event.key == pygame.K_RIGHT:
+                self.scroll_x += 10
             else:
                 self.data_str += event.unicode
-
+                
     def cancel(self):
         """Reverts the field to what it had originally without changing data."""
         self.id_str = self.backup_id
@@ -439,6 +456,7 @@ if __name__ == "__main__":
     ui_fields = [DataEntryField(i, functionsList) for i in range(len(functionsList) + 1)]
 
     running = True
+    scroll_y = 0
     while running:
         # 1. ALWAYS BLIT THE CACHED MATH GRID FIRST
         if GRAPH_SURFACE is not None:
@@ -470,9 +488,13 @@ if __name__ == "__main__":
 
                 # Check if user clicked inside any UI field
                 if current_panel == 'Functions':
-                    # TODO: allow scrolling to see the full function (maybe don't implement here in the code)
+                    if event.button == 4:
+                        scroll_y -= 1
+                    elif event.button == 5:
+                        scroll_y += 1
 
                     clicked_any_field = False
+                    
                     for field in ui_fields:
                         # TODO: allow users to move around entry fields (applies for all 4 tabs) and when one gets deleted, it removes that text thing and shifts the others
                         if field.rect.collidepoint(mouse_pos):
