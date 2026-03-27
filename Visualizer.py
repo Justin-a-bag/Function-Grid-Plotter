@@ -299,7 +299,7 @@ def update_functions() -> None:
 
 
 def render_grid(surface: pygame.Surface, xpoints: list[float], ypoints: list[float]):
-    # TODO: fix the new white lines appearing bug
+    # WHITE LINE BUG FIXED
     surface.fill((255, 255, 255))
     cell_w = (DRAW_MAX_X - DRAW_MIN_X) / len(xpoints)
     cell_h = (DRAW_MAX_Y - DRAW_MIN_Y) / len(ypoints)
@@ -312,11 +312,17 @@ def render_grid(surface: pygame.Surface, xpoints: list[float], ypoints: list[flo
                 if curFunc[2].inBounds(math_x, math_y,ANGLE_MODE,functionsDict,0):
                     z = curFunc[0].evaluate(math_x, math_y,ANGLE_MODE,functionsDict,0)
                     squarecolor = curFunc[1].getColorTuple(z)
-                    screen_x = DRAW_MIN_X + i * cell_w
-                    screen_y = DRAW_MAX_Y - ((j + 1) * cell_h)
+                    screen_x = round(DRAW_MIN_X + i * cell_w)
+                    next_x = round(DRAW_MIN_X + (i + 1) * cell_w)
 
+                    screen_y_top = round(DRAW_MAX_Y - ((j + 1) * cell_h))
+                    screen_y_bottom = round(DRAW_MAX_Y - (j * cell_h))
+
+                    rect_w = max(1, next_x - screen_x)
+                    rect_h = max(1, screen_y_bottom - screen_y_top)
+                    # break it into x y components and then do a rectangle draw for each one to prevent the white lines from appearing
                     if squarecolor != (-1, -1, -1):
-                        pygame.draw.rect(surface, squarecolor, (screen_x, screen_y, max(1.0, cell_w), max(1.0, cell_h)))
+                        pygame.draw.rect(surface, squarecolor, (screen_x, screen_y_top, rect_w, rect_h))
 
 
 # TODO: add comments to this god forsaken code stretch
