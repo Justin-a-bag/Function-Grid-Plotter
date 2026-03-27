@@ -33,6 +33,9 @@ ast_buttons = {}
 GRAPH_SURFACE = None
 AST_WRAP_WIDTH = 55
 
+scroll_y_vals=[0,0,0,0]
+#use scroll_y_vals for the scrolling amounts on each tab
+
 # --- GLOBAL STATE ---
 # Note: IDs here do NOT contain the semicolon.
 # Semicolons are only used inside the math strings (e.g., "sin(;eq)")
@@ -90,7 +93,8 @@ class DataEntryField:
 
     def __init__(self, index: int, list_ref: list):
         self.index = index
-        self.y = TEXTBOX_Y + (index * TEXTBOX_HEIGHT)
+        self.Y = TEXTBOX_Y + (index * TEXTBOX_HEIGHT)
+        self.y = self.Y
         self.rect = pygame.Rect(0, self.y, TEXTBOX_WIDTH, TEXTBOX_HEIGHT)
         self.scroll_x = 0
 
@@ -123,7 +127,7 @@ class DataEntryField:
         pygame.draw.rect(surface, (150, 150, 150), self.rect, 1)  # Border
 
         #Added for Scrolling, not sure if it's correct
-        self.y += scroll_y
+        self.y = self.Y+scroll_y_vals[0]
         self.rect.y = self.y
         self.id_rect.y = self.y + 10
         self.data_rect.y = self.y + 10
@@ -456,7 +460,6 @@ if __name__ == "__main__":
     ui_fields = [DataEntryField(i, functionsList) for i in range(len(functionsList) + 1)]
 
     running = True
-    scroll_y = 0
     while running:
         # 1. ALWAYS BLIT THE CACHED MATH GRID FIRST
         if GRAPH_SURFACE is not None:
@@ -488,9 +491,9 @@ if __name__ == "__main__":
                 # Check if user clicked inside any UI field
                 if current_panel == 'Functions':
                     if event.button == 4:
-                        scroll_y -= 1
+                        scroll_y_vals[0] -= 5
                     elif event.button == 5:
-                        scroll_y += 1
+                        scroll_y_vals[0] = min(0,scroll_y_vals[0]+5)
 
                     clicked_any_field = False
                     
