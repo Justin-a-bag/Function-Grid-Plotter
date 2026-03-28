@@ -6,6 +6,7 @@ import sys
 from Equation import Equation
 from Color import Color
 from Boundary import Boundary
+from DataEntryField import DataEntryField
 
 #Performance improvements
 sys.setrecursionlimit(5000)
@@ -20,7 +21,7 @@ TEXTBOX_COLOR = (240, 240, 240)
 INDENT_COLOR = (200, 200, 200)
 TEXT_COLOR = (10, 10, 10)
 TABS_WIDTH, TABS_HEIGHT = 60, 50
-PANELS = ['Functions', 'Colours', 'Restrictions', 'Draw', 'Settings']
+PANELS = ['Functions', 'Colors', 'Restrictions', 'Draw', 'Settings']
 current_panel = 'Functions'
 
 # Settings & AST Globals
@@ -89,34 +90,14 @@ def calculate_draw_bounds():
     DRAW_MAX_Y = DRAW_MIN_Y + grid_size
 
 
-class DataEntryField:
+class FunctionsEntryField(DataEntryField):
     """
-    Replaces the Textbox. Acts as a State Machine for each list item.
+    Replaces the Textbox. Acts as a State Machine for each list item. Contains vital information for hitboxes in Pygame
     """
 
     def __init__(self, index: int, list_ref: list):
-        self.index = index
-        self.Y = TEXTBOX_Y + (index * TEXTBOX_HEIGHT)
-        self.y = self.Y
-        self.rect = pygame.Rect(0, self.y, TEXTBOX_WIDTH, TEXTBOX_HEIGHT)
-        #TODO: autoscroll text to the right when you click on it
-        self.scroll_x = 0
+        super().__init__(index, list_ref)
 
-        # Determine if this is a populated field or the "New" generation field at the bottom
-        if index < len(list_ref):
-            self.id_str = list_ref[index][0]
-            self.data_str = list_ref[index][1]
-        else:
-            self.id_str = ""
-            self.data_str = ""
-
-        # Backups for when the user clicks off (Cancels)
-        self.backup_id = self.id_str
-        self.backup_data = self.data_str
-
-        # State flags
-        self.editing_id = False
-        self.editing_data = False
 
         # Sub-rectangles for hit-testing
         self.id_rect = pygame.Rect(30, self.y + 10, 50, 30)
@@ -139,7 +120,7 @@ class DataEntryField:
 
         if self.y + TEXTBOX_HEIGHT < TABS_HEIGHT or self.y > HEIGHT:
             return
-            
+
         # 1. Error Flagging
         # Fetch the color from our global error_states dict based on this field's index.
         # Defaults to Grey if not found.
@@ -178,7 +159,7 @@ class DataEntryField:
             pygame.draw.rect(surface, (100, 200, 100), self.btn_enter)
             btn_txt = small_font.render("ENTER", True, (0, 0, 0))
             surface.blit(btn_txt, (self.btn_enter.x + 5, self.btn_enter.y + 10))
-        
+
     def handle_click(self, mouse_pos) -> bool:
         """Returns True if the 'Enter' button was clicked and confirmed."""
         if self.id_rect.collidepoint(mouse_pos):
@@ -194,7 +175,7 @@ class DataEntryField:
     def handle_keydown(self, event):
         # TODO: improve quality of life (holding backspace & arrow keys)
 
-        
+
 
         #TODO: editing inside of the line instead of strictly at the end
         if self.editing_id:
@@ -202,7 +183,7 @@ class DataEntryField:
                 self.id_str = self.id_str[:-1]
             else:
                 self.id_str += event.unicode
-                
+
         elif self.editing_data:
             if event.key == pygame.K_BACKSPACE:
                 self.data_str = self.data_str[:-1]
@@ -212,7 +193,7 @@ class DataEntryField:
                 self.scroll_x += 10
             else:
                 self.data_str += event.unicode
-                
+
     def cancel(self):
         """Reverts the field to what it had originally without changing data."""
         self.id_str = self.backup_id
@@ -236,6 +217,149 @@ class DataEntryField:
 
         update_functions()
         return True  # Signals the main loop that we need to recalculate the math grid
+
+class ColorsEntryField(DataEntryField):
+    """
+    Replaces the Textbox. Acts as a State Machine for each list item. Contains vital information for hitboxes in Pygame
+    """
+    index: int
+    Y: int
+    y: int
+    rect: pygame.Rect
+    scroll_x: int
+    id_str: str
+
+    def __init__(self, index: int, list_ref: list):
+        super().__init__(index, list_ref)
+
+        # Sub-rectangles for hit-testing
+        self.id_rect = pygame.Rect(30, self.y + 10, 50, 30)
+        self.data_rect1 = pygame.Rect(85, self.y + 10, 50, 30)
+        self.data_rect2 = pygame.Rect(135, self.y + 10, 50, 30)
+        self.data_rect3 = pygame.Rect(185, self.y + 10, 50, 30)
+        self.btn_enter = pygame.Rect(240, self.y + 10, 50, 30)
+
+    def draw(self, surface: pygame.Surface):
+        # Draw background
+        is_active = self.editing_id or self.editing_data
+        bg_color = INDENT_COLOR if is_active else TEXTBOX_COLOR
+        pygame.draw.rect(surface, bg_color, self.rect)
+        pygame.draw.rect(surface, (150, 150, 150), self.rect, 1)  # Border
+
+        #Added for Scrolling, not sure if it's correct
+        self.y = self.Y+scroll_y_vals[0]
+        self.rect.y = self.y
+        self.id_rect.y = self.y + 10
+        self.data_rect1.y = self.y + 10
+        self.data_rect2.y = self.y + 10
+        self.data_rect3.y = self.y + 10
+        self.btn_enter.y = self.y + 10
+
+        if self.y + TEXTBOX_HEIGHT < TABS_HEIGHT or self.y > HEIGHT:
+            return
+
+        # 1. Error Flagging
+        # Fetch the color from our global error_states dict based on this field's index.
+        # Defaults to Grey if not found.
+        #TODO: blue flagging if a function is too large
+        flag_color = error_states.get(self.index, ((150, 150, 150), ""))[0]
+        pygame.draw.circle(surface, flag_color, (15, self.y + 25), 6)
+
+        # 2. Draw ID Field
+        pygame.draw.rect(surface, (255, 255, 255) if self.editing_id else bg_color, self.id_rect)
+        id_surf = font.render(self.id_str, True, TEXT_COLOR)
+        surface.blit(id_surf, (self.id_rect.x + 5, self.id_rect.y + 7))
+
+        #todo for all 3 datarectangles
+
+        # 3. Draw Data Field (With Scrolling/Clipping)
+        pygame.draw.rect(surface, (255, 255, 255) if self.editing_data else bg_color, self.data_rect)
+
+        # ast_to_string logic: if NOT editing, show the formatted AST string
+        display_str = self.data_str
+        if not is_active and self.id_str in functionsDict:
+            try:
+                display_str = functionsDict[self.id_str].ast_to_string()
+            except AttributeError:
+                pass
+
+        data_surf = font.render(display_str, True, TEXT_COLOR)
+
+        # todo apply to all 3 datarectangles
+
+        # Scroll through text entry field natively via subsurface clipping
+        # Added horizantal scrolling(left and right key)
+        clip_area = pygame.Rect(self.scroll_x, 0, self.data_rect.width - 5, self.data_rect.height)
+        surface.blit(data_surf, (self.data_rect.x + 5, self.data_rect.y + 7), clip_area)
+
+        max_scroll = max(0, data_surf.get_width() - (self.data_rect.width - 5))
+        self.scroll_x = max(0, min(self.scroll_x, max_scroll))
+
+        # 4. Draw Confirm "Enter" Button
+        if is_active:
+            pygame.draw.rect(surface, (100, 200, 100), self.btn_enter)
+            btn_txt = small_font.render("ENTER", True, (0, 0, 0))
+            surface.blit(btn_txt, (self.btn_enter.x + 5, self.btn_enter.y + 10))
+
+    def handle_click(self, mouse_pos) -> bool:
+        """Returns True if the 'Enter' button was clicked and confirmed."""
+        if self.id_rect.collidepoint(mouse_pos):
+            self.editing_id = True
+            self.editing_data = False
+        elif self.data_rect.collidepoint(mouse_pos):        #todo, account for datarectangles
+            self.editing_data = True
+            self.editing_id = False
+        elif self.btn_enter.collidepoint(mouse_pos) and (self.editing_id or self.editing_data):
+            return self.confirm()
+        return False
+
+    def handle_keydown(self, event):
+        # TODO: improve quality of life (holding backspace & arrow keys)
+
+
+
+        #TODO: editing inside of the line instead of strictly at the end
+        if self.editing_id:
+            if event.key == pygame.K_BACKSPACE:
+                self.id_str = self.id_str[:-1]
+            else:
+                self.id_str += event.unicode
+
+        elif self.editing_data:
+            if event.key == pygame.K_BACKSPACE:     # todo account for all 3 datarectangles
+                self.data_str = self.data_str[:-1]
+            elif event.key == pygame.K_LEFT:
+                self.scroll_x -= 10
+            elif event.key == pygame.K_RIGHT:
+                self.scroll_x += 10
+            else:
+                self.data_str += event.unicode
+
+    def cancel(self):
+        """Reverts the field to what it had originally without changing data."""
+        self.id_str = self.backup_id
+        self.data_str = self.backup_data
+        self.editing_id = False
+        self.editing_data = False
+
+    #todo, change to apply to color functions
+    def confirm(self) -> bool:
+        """Changes list indices and triggers dict rebuild."""
+        global functionsList
+        if self.index < len(functionsList):
+            functionsList[self.index] = (self.id_str, self.data_str)
+        else:
+            if self.id_str.strip() != "":
+                functionsList.append((self.id_str, self.data_str))
+
+        self.backup_id = self.id_str
+        self.backup_data = self.data_str
+        self.editing_id = False
+        self.editing_data = False
+
+        update_functions()
+        return True  # Signals the main loop that we need to recalculate the math grid
+
 
 
 def update_functions() -> None:
@@ -465,14 +589,20 @@ if __name__ == "__main__":
         AST_SELECTED_ID = functionsList[0][0]
     rerender_graph_surface(x_coords, y_coords)
 
-    ui_fields = [DataEntryField(i, functionsList) for i in range(len(functionsList) + 1)]
+
+    function_ui_fields = [FunctionsEntryField(i, functionsList) for i in range(len(functionsList) + 1)]
+
+    colors_ui_fields = [DataEntryField(i, colorsList) for i in range(len(colorsList) + 1)]
+
+    rest_ui_fields = [DataEntryField(i, restrictionsList) for i in range(len(colorsList) + 1)]
+    draw_ui_fields = [DataEntryField(i, drawList) for i in range(len(colorsList) + 1)]
 
     running = True
     while running:
         # 1. ALWAYS BLIT THE CACHED MATH GRID FIRST
         if GRAPH_SURFACE is not None:
             screen.blit(GRAPH_SURFACE, (0, 0))
-        
+
 
         pygame.draw.rect(screen, (220, 220, 220), (0, TABS_HEIGHT, TEXTBOX_WIDTH, HEIGHT))
         # 3. HANDLE EVENTS
@@ -498,14 +628,14 @@ if __name__ == "__main__":
 
                 # Check if user clicked inside any UI field
                 if current_panel == 'Functions':
-                    if event.button == 4:
+                    if event.button == 4:       # scroll up
                         scroll_y_vals[0] -= 5
-                    elif event.button == 5:
+                    elif event.button == 5:     # scroll down
                         scroll_y_vals[0] = min(0,scroll_y_vals[0]+5)
 
                     clicked_any_field = False
-                    
-                    for field in ui_fields:
+
+                    for field in function_ui_fields:
                         # TODO: allow users to move around entry fields (applies for all 4 tabs) and when one gets deleted, it removes that text thing and shifts the others
                         if field.rect.collidepoint(mouse_pos):
                             clicked_any_field = True
@@ -515,7 +645,7 @@ if __name__ == "__main__":
                             if needs_redraw:
                                 print("Recalculating Math...")
                                 rerender_graph_surface(x_coords, y_coords)
-                                ui_fields = [DataEntryField(i, functionsList) for i in range(len(functionsList) + 1)]
+                                function_ui_fields = [FunctionsEntryField(i, functionsList) for i in range(len(functionsList) + 1)]
 
                         else:
                             # If they clicked another field, cancel the edit on this one
@@ -524,10 +654,10 @@ if __name__ == "__main__":
 
                     # If they clicked entirely outside the UI sidebar, cancel everything
                     if not clicked_any_field:
-                        for field in ui_fields: field.cancel()
+                        for field in function_ui_fields: field.cancel()
 
                 # TODO: the other 3 panels
-                if current_panel == 'Colours':
+                if current_panel == 'Colors':
                     # deal with buttons here
                     continue
 
@@ -568,12 +698,12 @@ if __name__ == "__main__":
 
             if event.type == pygame.KEYDOWN:
                 if current_panel == 'Functions':
-                    for field in ui_fields:
+                    for field in function_ui_fields:
                         field.handle_keydown(event)
 
         # 4. DRAW APPROPRIATE UI OVERLAYS
         if current_panel == 'Functions':
-            for field in ui_fields:
+            for field in function_ui_fields:
                 field.draw(screen)
             # pygame.draw.rect(screen, (225, 225, 225), toggle_ast_button)
             # pygame.draw.rect(screen, (0, 0, 0), toggle_ast_button, 2)
@@ -584,7 +714,7 @@ if __name__ == "__main__":
 
         # 2. DRAW UI TABS AND ACTIVE PANEL BACKGROUND
         render_tab_labels(screen, font)
-        
+
         render_ast_overlay(screen, font)
 
         pygame.display.flip()
