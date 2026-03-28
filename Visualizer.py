@@ -81,7 +81,7 @@ def calculate_draw_bounds():
     Forces the drawing area to remain the correct ratio to prevent stretching.
     This will need to be edited to allow for rectangular grids
     """
-    # TODO: calculate draw bounds based on the dimensions of the grid rather than a square (M)
+    # We may need to change the math here if we want to rescale by size
     global DRAW_MIN_X, DRAW_MAX_X, DRAW_MIN_Y, DRAW_MAX_Y
 
     # Calculate available space outside the 300px sidebar
@@ -852,7 +852,7 @@ def apply_screen_size_from_index(index: int) -> None:
 # --- MAIN EXECUTION ---
 if __name__ == "__main__":
    calculate_draw_bounds()
-   screen = pygame.display.set_mode((WIDTH, HEIGHT))
+   screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
    pygame.display.set_caption("Render Engine")
 
 
