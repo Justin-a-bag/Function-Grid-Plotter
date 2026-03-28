@@ -103,7 +103,7 @@ class FunctionsEntryField(DataEntryField):
         self.data_rect = pygame.Rect(85, self.y + 10, 150, 30)
         self.btn_enter = pygame.Rect(240, self.y + 10, 50, 30)
 
-    def draw(self, surface: pygame.Surface):
+    def draw(self, surface: pygame.Surface) -> None:
         # Draw background
         is_active = self.editing_id or self.editing_data
         bg_color = INDENT_COLOR if is_active else TEXTBOX_COLOR
@@ -171,7 +171,7 @@ class FunctionsEntryField(DataEntryField):
             return self.confirm()
         return False
 
-    def handle_keydown(self, event):
+    def handle_keydown(self, event) -> None:
         # TODO: improve quality of life (holding backspace & arrow keys)
 
 
@@ -193,7 +193,7 @@ class FunctionsEntryField(DataEntryField):
             else:
                 self.data_str += event.unicode
 
-    def cancel(self):
+    def cancel(self) -> None:
         """Reverts the field to what it had originally without changing data."""
         self.id_str = self.backup_id
         self.data_str = self.backup_data
@@ -217,28 +217,34 @@ class FunctionsEntryField(DataEntryField):
         update_functions()
         return True  # Signals the main loop that we need to recalculate the math grid
 
+
 class ColorsEntryField(DataEntryField):
     """
     Replaces the Textbox. Acts as a State Machine for each list item. Contains vital information for hitboxes in Pygame
     """
-    index: int
-    Y: int
-    y: int
-    rect: pygame.Rect
-    scroll_x: int
-    id_str: str
+    data_index: int
 
     def __init__(self, index: int, list_ref: list):
         super().__init__(index, list_ref)
 
+        # three data_str (including data_str) values for r, g, and b values
+        self.data_str_g = list_ref[2]
+        self.data_str_b = list_ref[2]
+
+        # three backups including backup_str
+        self.backup_data_g = self.data_str_g
+        self.backup_data_b = self.data_str_b
+
         # Sub-rectangles for hit-testing
         self.id_rect = pygame.Rect(30, self.y + 10, 50, 30)
+        self.full_data_rect = pygame.Rect(85, self.y + 10, 150, 30)
         self.data_rect1 = pygame.Rect(85, self.y + 10, 50, 30)
         self.data_rect2 = pygame.Rect(135, self.y + 10, 50, 30)
         self.data_rect3 = pygame.Rect(185, self.y + 10, 50, 30)
         self.btn_enter = pygame.Rect(240, self.y + 10, 50, 30)
+        self.data_index = 0
 
-    def draw(self, surface: pygame.Surface):
+    def draw(self, surface: pygame.Surface) -> None:
         # Draw background
         is_active = self.editing_id or self.editing_data
         bg_color = INDENT_COLOR if is_active else TEXTBOX_COLOR
@@ -269,10 +275,13 @@ class ColorsEntryField(DataEntryField):
         id_surf = font.render(self.id_str, True, TEXT_COLOR)
         surface.blit(id_surf, (self.id_rect.x + 5, self.id_rect.y + 7))
 
-        #todo for all 3 datarectangles
-
-        # 3. Draw Data Field (With Scrolling/Clipping)
-        pygame.draw.rect(surface, (255, 255, 255) if self.editing_data else bg_color, self.data_rect)
+        # 3. Draw 3 Data Fields (With Scrolling/Clipping)
+        pygame.draw.rect(surface, (255, 255, 255) if self.editing_data and self.data_index == 0 else bg_color,
+                         self.data_rect1)
+        pygame.draw.rect(surface, (255, 255, 255) if self.editing_data and self.data_index == 1 else bg_color,
+                         self.data_rect1)
+        pygame.draw.rect(surface, (255, 255, 255) if self.editing_data and self.data_index == 2 else bg_color,
+                         self.data_rect1)
 
         # ast_to_string logic: if NOT editing, show the formatted AST string
         display_str = self.data_str
@@ -284,14 +293,23 @@ class ColorsEntryField(DataEntryField):
 
         data_surf = font.render(display_str, True, TEXT_COLOR)
 
-        # todo apply to all 3 datarectangles
-
         # Scroll through text entry field natively via subsurface clipping
         # Added horizantal scrolling(left and right key)
-        clip_area = pygame.Rect(self.scroll_x, 0, self.data_rect.width - 5, self.data_rect.height)
-        surface.blit(data_surf, (self.data_rect.x + 5, self.data_rect.y + 7), clip_area)
+        clip_area = pygame.Rect(self.scroll_x, 0, self.data_rect1.width - 5, self.data_rect1.height)
+        surface.blit(data_surf, (self.data_rect1.x + 5, self.data_rect1.y + 7), clip_area)
+        max_scroll = max(0, data_surf.get_width() - (self.data_rect1.width - 5))
+        self.scroll_x = max(0, min(self.scroll_x, max_scroll))
 
-        max_scroll = max(0, data_surf.get_width() - (self.data_rect.width - 5))
+        # scroll for rectangle 2 (g)
+        clip_area = pygame.Rect(self.scroll_x, 0, self.data_rect2.width - 5, self.data_rect2.height)
+        surface.blit(data_surf, (self.data_rect2.x + 5, self.data_rect2.y + 7), clip_area)
+        max_scroll = max(0, data_surf.get_width() - (self.data_rect2.width - 5))
+        self.scroll_x = max(0, min(self.scroll_x, max_scroll))
+
+        # scroll for rectangle 3 (b)
+        clip_area = pygame.Rect(self.scroll_x, 0, self.data_rect3.width - 5, self.data_rect3.height)
+        surface.blit(data_surf, (self.data_rect3.x + 5, self.data_rect3.y + 7), clip_area)
+        max_scroll = max(0, data_surf.get_width() - (self.data_rect3.width - 5))
         self.scroll_x = max(0, min(self.scroll_x, max_scroll))
 
         # 4. Draw Confirm "Enter" Button
@@ -305,14 +323,22 @@ class ColorsEntryField(DataEntryField):
         if self.id_rect.collidepoint(mouse_pos):
             self.editing_id = True
             self.editing_data = False
-        elif self.data_rect.collidepoint(mouse_pos):        #todo, account for datarectangles
+        elif self.full_data_rect.collidepoint(mouse_pos):
             self.editing_data = True
             self.editing_id = False
+
+            if self.data_rect1.collidepoint(mouse_pos):
+                self.data_index = 0
+            elif self.data_rect2.collidepoint(mouse_pos):
+                self.data_index = 1
+            elif self.data_rect3.collidepoint(mouse_pos):
+                self.data_index = 2
+
         elif self.btn_enter.collidepoint(mouse_pos) and (self.editing_id or self.editing_data):
             return self.confirm()
         return False
 
-    def handle_keydown(self, event):
+    def handle_keydown(self, event) -> None:
         # TODO: improve quality of life (holding backspace & arrow keys)
 
 
@@ -325,34 +351,47 @@ class ColorsEntryField(DataEntryField):
                 self.id_str += event.unicode
 
         elif self.editing_data:
-            if event.key == pygame.K_BACKSPACE:     # todo account for all 3 datarectangles
-                self.data_str = self.data_str[:-1]
+            if event.key == pygame.K_BACKSPACE:
+                if self.data_index == 0:
+                    self.data_str = self.data_str[:-1]
+                if self.data_index == 1:
+                    self.data_str_g = self.data_str_g[:-1]
+                if self.data_index == 2:
+                    self.data_str_b = self.data_str_b[:-1]
             elif event.key == pygame.K_LEFT:
                 self.scroll_x -= 10
             elif event.key == pygame.K_RIGHT:
                 self.scroll_x += 10
             else:
-                self.data_str += event.unicode
+                if self.data_index == 0:
+                    self.data_str += event.unicode
+                if self.data_index == 1:
+                    self.data_str_g += event.unicode
+                if self.data_index == 2:
+                    self.data_str_b += event.unicode
 
     def cancel(self):
         """Reverts the field to what it had originally without changing data."""
         self.id_str = self.backup_id
         self.data_str = self.backup_data
+        self.data_str_g = self.backup_data_g
+        self.data_str_b = self.backup_data_b
         self.editing_id = False
         self.editing_data = False
 
-    #todo, change to apply to color functions
     def confirm(self) -> bool:
         """Changes list indices and triggers dict rebuild."""
-        global functionsList
-        if self.index < len(functionsList):
-            functionsList[self.index] = (self.id_str, self.data_str)
+        global colorsList
+        if self.index < len(colorsList):
+            colorsList[self.index] = (self.id_str, self.data_str, self.data_str_g, self.data_str_b)
         else:
             if self.id_str.strip() != "":
-                functionsList.append((self.id_str, self.data_str))
+                colorsList.append((self.id_str, self.data_str, self.data_str_g, self.data_str_b))
 
         self.backup_id = self.id_str
         self.backup_data = self.data_str
+        self.backup_data_g = self.data_str_g
+        self.backup_data_b = self.data_str_b
         self.editing_id = False
         self.editing_data = False
 

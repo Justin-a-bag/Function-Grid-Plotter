@@ -1,5 +1,6 @@
 import pygame
-from Visualizer import TEXTBOX_Y,TEXTBOX_HEIGHT,TEXTBOX_WIDTH
+from Visualizer import TEXTBOX_Y, TEXTBOX_HEIGHT, TEXTBOX_WIDTH
+
 
 class DataEntryField:
     """
