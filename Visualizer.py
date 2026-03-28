@@ -98,7 +98,6 @@ class FunctionsEntryField(DataEntryField):
     def __init__(self, index: int, list_ref: list):
         super().__init__(index, list_ref)
 
-
         # Sub-rectangles for hit-testing
         self.id_rect = pygame.Rect(30, self.y + 10, 50, 30)
         self.data_rect = pygame.Rect(85, self.y + 10, 150, 30)
