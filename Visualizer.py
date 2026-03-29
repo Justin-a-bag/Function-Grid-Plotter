@@ -8,9 +8,6 @@ from Color import Color
 from Boundary import Boundary
 from DataEntryField import DataEntryField
 
-#Performance improvements
-sys.setrecursionlimit(5000)
-
 # Define screen and drawing boundaries
 WIDTH, HEIGHT = 1100, 800
 DRAW_MIN_X, DRAW_MAX_X = 300, WIDTH
@@ -26,19 +23,29 @@ current_panel = 'Functions'
 
 # Settings & AST Globals
 ANGLE_MODE = "radians"
-SHOW_AST = False
-AST_SELECTED_ID = None
 SCREEN_SIZE_OPTIONS = [(900, 700), (1100, 800), (1280, 900), (1400, 1000), (1600, 1000)]
 SCREEN_SIZE_INDEX = 1
-settings_buttons = {}
-ast_buttons = {}
-# I have temporarily disabled this feature since it isn't what we're looking for
-# toggle_ast_button = pygame.Rect(180, 0, 120, 30)
-GRAPH_SURFACE = None
-AST_WRAP_WIDTH = 55
 
-scroll_y_vals=[0,0,0,0]
-#use scroll_y_vals for the scrolling amounts on each tab
+WARNING_TOTAL_GRID_POINTS = 90000
+MAX_TOTAL_GRID_POINTS = 4194304
+settings_buttons = {}
+settings_values = {
+    "x_min": "-15.0",
+    "x_points": "100",
+    "x_max": "15.0",
+    "y_min": "-15.0",
+    "y_points": "100",
+    "y_max": "15.0",
+    "max_recursion": "0"
+}
+
+active_settings_field = None
+
+GRAPH_SURFACE = None
+
+MAX_DEPTH = 100
+scroll_y_vals = [0, 0, 0, 0]
+# use scroll_y_vals for the scrolling amounts on each tab
 
 # --- GLOBAL STATE ---
 # Note: IDs here do NOT contain the semicolon.
@@ -62,32 +69,33 @@ drawFinal = []
 
 # Maps list index -> ((R, G, B), "Error Message")
 error_states = {}
+settings_error_states = {}
 
 pygame.init()
 font = pygame.font.SysFont(None, 24)
 small_font = pygame.font.SysFont(None, 18)
 
 
-def calculate_draw_bounds():
+def calculate_draw_bounds(xrange:float,yrange:float):
     """
     Forces the drawing area to remain the correct ratio to prevent stretching.
     This will need to be edited to allow for rectangular grids
     """
-    # TODO: calculate draw bounds based on the dimensions of the grid rather than a square
     global DRAW_MIN_X, DRAW_MAX_X, DRAW_MIN_Y, DRAW_MAX_Y
 
     # Calculate available space outside the 300px sidebar
     available_w = max(1, WIDTH - TEXTBOX_WIDTH)
     available_h = max(1, HEIGHT)
 
-    # The grid will be a square based on the smallest available dimension
-    grid_size = min(available_w, available_h)
+    # grid size horizontally
+    grid_size_x = min(available_w, available_h*xrange/yrange)
+    grid_size_y = min(available_w*yrange/xrange, available_h)
 
     # Center the square in the available space
-    DRAW_MIN_X = TEXTBOX_WIDTH + (available_w - grid_size) // 2
-    DRAW_MAX_X = DRAW_MIN_X + grid_size
-    DRAW_MIN_Y = (available_h - grid_size) // 2
-    DRAW_MAX_Y = DRAW_MIN_Y + grid_size
+    DRAW_MIN_X = TEXTBOX_WIDTH + (available_w - grid_size_x) // 2
+    DRAW_MAX_X = DRAW_MIN_X + grid_size_x
+    DRAW_MIN_Y = (available_h - grid_size_y) // 2
+    DRAW_MAX_Y = DRAW_MIN_Y + grid_size_y
 
 
 class FunctionsEntryField(DataEntryField):
@@ -110,8 +118,8 @@ class FunctionsEntryField(DataEntryField):
         pygame.draw.rect(surface, bg_color, self.rect)
         pygame.draw.rect(surface, (150, 150, 150), self.rect, 1)  # Border
 
-        #Added for Scrolling, not sure if it's correct
-        self.y = self.Y+scroll_y_vals[0]
+        # Added for Scrolling, not sure if it's correct
+        self.y = self.Y + scroll_y_vals[0]
         self.rect.y = self.y
         self.id_rect.y = self.y + 10
         self.data_rect.y = self.y + 10
@@ -123,7 +131,6 @@ class FunctionsEntryField(DataEntryField):
         # 1. Error Flagging
         # Fetch the color from our global error_states dict based on this field's index.
         # Defaults to Grey if not found.
-        #TODO: blue flagging if a function is too large
         flag_color = error_states.get(self.index, ((150, 150, 150), ""))[0]
         pygame.draw.circle(surface, flag_color, (15, self.y + 25), 6)
 
@@ -174,9 +181,7 @@ class FunctionsEntryField(DataEntryField):
     def handle_keydown(self, event) -> None:
         # TODO: improve quality of life (holding backspace & arrow keys)
 
-
-
-        #TODO: editing inside of the line instead of strictly at the end
+        # TODO: editing inside of the line instead of strictly at the end (Cindy)
         if self.editing_id:
             if event.key == pygame.K_BACKSPACE:
                 self.id_str = self.id_str[:-1]
@@ -436,7 +441,7 @@ def update_functions() -> None:
         # Check for Math Errors vs Size Warnings
         if eq.tree.op == 'invalid' or eq.tree.op == 'potato':
             error_states[i] = ((200, 50, 50), "Math Error: Invalid syntax or missing arguments.")
-        elif eq.size() > 100:
+        elif eq.size(functionsDict, MAX_DEPTH) > 100:
             error_states[i] = ((50, 100, 200), "Warning: Large function tree. May impact performance.")
         else:
             error_states[i] = ((50, 200, 50), "Valid")  # Green
@@ -461,7 +466,7 @@ def update_functions() -> None:
 
 
 def render_grid(surface: pygame.Surface, xpoints: list[float], ypoints: list[float]):
-    # TODO: fix the new white lines appearing bug
+    # TODO: fix the new white lines appearing bug (Lingnan)
     surface.fill((255, 255, 255))
     cell_w = (DRAW_MAX_X - DRAW_MIN_X) / len(xpoints)
     cell_h = (DRAW_MAX_Y - DRAW_MIN_Y) / len(ypoints)
@@ -471,24 +476,31 @@ def render_grid(surface: pygame.Surface, xpoints: list[float], ypoints: list[flo
             math_x = xpoints[i]
             math_y = ypoints[j]
             for curFunc in drawFinal:
-                if curFunc[2].inBounds(math_x, math_y,ANGLE_MODE,functionsDict,0):
-                    z = curFunc[0].evaluate(math_x, math_y,ANGLE_MODE,functionsDict,0)
-                    squarecolor = curFunc[1].getColorTuple(z)
-                    screen_x = DRAW_MIN_X + i * cell_w
-                    screen_y = DRAW_MAX_Y - ((j + 1) * cell_h)
+                if curFunc[2].inBounds(math_x, math_y, ANGLE_MODE, functionsDict, MAX_DEPTH):
+                    z = curFunc[0].evaluate(math_x, math_y, ANGLE_MODE, functionsDict, MAX_DEPTH)
+                    squarecolor = curFunc[1].getColorTuple(z, ANGLE_MODE, functionsDict, MAX_DEPTH)
+                    screen_x = round(DRAW_MIN_X + i * cell_w)
+                    next_x = round(DRAW_MIN_X + (i + 1) * cell_w)
 
+                    screen_y_top = round(DRAW_MAX_Y - ((j + 1) * cell_h))
+                    screen_y_bottom = round(DRAW_MAX_Y - (j * cell_h))
+
+                    rect_w = max(1, next_x - screen_x)
+                    rect_h = max(1, screen_y_bottom - screen_y_top)
+                    # break it into x y components and then do a rectangle draw for each one to prevent the white lines from appearing
                     if squarecolor != (-1, -1, -1):
-                        pygame.draw.rect(surface, squarecolor, (screen_x, screen_y, max(1.0, cell_w), max(1.0, cell_h)))
+                        pygame.draw.rect(surface, squarecolor, (screen_x, screen_y_top, rect_w, rect_h))
 
 
-# TODO: add comments to this god forsaken code stretch
+# redraws the functions
 def rerender_graph_surface(x_coords, y_coords):
     global GRAPH_SURFACE
     GRAPH_SURFACE = pygame.Surface((WIDTH, HEIGHT))
     GRAPH_SURFACE.fill((255, 255, 255))
     render_grid(GRAPH_SURFACE, x_coords, y_coords)
 
-#Draws the top 5 label things
+
+# Draws the top 5 label things
 def render_tab_labels(screen: pygame.Surface, font: pygame.font.Font) -> None:
     for i in range(len(PANELS)):
         rect = pygame.Rect(TABS_WIDTH * i, 0, TABS_WIDTH, TABS_HEIGHT)
@@ -500,6 +512,7 @@ def render_tab_labels(screen: pygame.Surface, font: pygame.font.Font) -> None:
         screen.blit(label, (rect.x + 4, rect.y + 15))
 
 
+# draws a button that you can click
 def draw_button(screen: pygame.Surface, font: pygame.font.Font, rect: pygame.Rect, label: str) -> None:
     pygame.draw.rect(screen, (225, 225, 225), rect)
     pygame.draw.rect(screen, (70, 70, 70), rect, 2)
@@ -508,117 +521,453 @@ def draw_button(screen: pygame.Surface, font: pygame.font.Font, rect: pygame.Rec
     screen.blit(text_surface, text_rect)
 
 
-# TODO: the UI for the other 3 tabs
+# TODO: the UI for the other 3 tabs (Justin)
 # (should probably use something similar to render_tab_labels and draw_button for this?)
 
 # if you need to render a screen make the functions for that screen here
-# TODO: update and rework settings overlay
+# TODO: update and rework settings overlay (Lingnan)
 def render_settings_overlay(screen: pygame.Surface, font: pygame.font.Font) -> None:
+    """
+    Draw the Settings tab UI inside the fixed left sidebar.
+
+
+    This version also draws live textbox contents and stores the
+    textbox/button rects so they can be clicked and edited.
+    """
     global settings_buttons
     settings_buttons = {}
-    if current_panel != 'Settings': return
 
-    title = font.render("SETTINGS", True, (0, 0, 0))
-    screen.blit(title, (50, 60))
-
-    mode_text = font.render("Angle mode: " + ANGLE_MODE, True, (0, 0, 0))
-    size_text = font.render(f"Window: {WIDTH} x {HEIGHT}", True, (0, 0, 0))
-    ast_text = font.render("AST visible: " + str(SHOW_AST), True, (0, 0, 0))
-    selected_text = font.render("AST ID: " + str(AST_SELECTED_ID), True, (0, 0, 0))
-
-    screen.blit(mode_text, (50, 90))
-    screen.blit(size_text, (50, 115))
-    screen.blit(ast_text, (50, 140))
-    screen.blit(selected_text, (50, 165))
-
-    settings_buttons["angle_toggle"] = pygame.Rect(50, 195, 110, 35)
-    settings_buttons["size_prev"] = pygame.Rect(50, 240, 50, 35)
-    settings_buttons["size_next"] = pygame.Rect(100, 240, 50, 35)
-
-    draw_button(screen, font, settings_buttons["angle_toggle"], "Toggle Mode")
-    draw_button(screen, font, settings_buttons["size_prev"], "<")
-    draw_button(screen, font, settings_buttons["size_next"], ">")
-
-
-# TODO: decide what to do with the AST rendering section
-def render_ast_overlay(screen: pygame.Surface, font: pygame.font.Font) -> None:
-    global ast_buttons
-    ast_buttons = {}
-    if not SHOW_AST: return
-
-    panel_x = 320
-    panel_y = 40
-    panel_w = max(320, WIDTH - 340)
-    panel_h = min(340, HEIGHT - 60)
-
-    overlay_rect = pygame.Rect(panel_x, panel_y, panel_w, panel_h)
-    pygame.draw.rect(screen, (245, 245, 245), overlay_rect)
-    pygame.draw.rect(screen, (80, 80, 80), overlay_rect, 2)
-
-    title = font.render("AST Visualizer", True, (0, 0, 0))
-    screen.blit(title, (panel_x + 10, panel_y + 10))
-
-    # ast_buttons["toggle_ast"] = pygame.Rect(panel_x + panel_w - 110, panel_y + 8, 90, 28)
-    ast_buttons["ast_prev"] = pygame.Rect(panel_x + 10, panel_y + 40, 35, 30)
-    ast_buttons["ast_next"] = pygame.Rect(panel_x + 50, panel_y + 40, 35, 30)
-
-    # draw_button(screen, font, ast_buttons["toggle_ast"], "Hide")
-    draw_button(screen, font, ast_buttons["ast_prev"], "<")
-    draw_button(screen, font, ast_buttons["ast_next"], ">")
-
-    selected_line = "Selected: " + str(AST_SELECTED_ID)
-    selected_surface = font.render(selected_line, True, (0, 0, 0))
-    screen.blit(selected_surface, (panel_x + 95, panel_y + 47))
-
-    if AST_SELECTED_ID is None or AST_SELECTED_ID not in functionsDict:
-        no_text = font.render("No selected function", True, (0, 0, 0))
-        screen.blit(no_text, (panel_x + 10, panel_y + 85))
+    if current_panel != 'Settings':
         return
 
-    ast_text = functionsDict[AST_SELECTED_ID].ast_to_string()
-    lines = []
-    for i in range(0, len(ast_text), AST_WRAP_WIDTH):
-        lines.append(ast_text[i:i + AST_WRAP_WIDTH])
+    update_settings_error_states()
 
-    max_lines = (panel_h - 100) // 20
-    for i in range(min(len(lines), max_lines)):
-        line_surface = font.render(lines[i], True, (20, 20, 20))
-        screen.blit(line_surface, (panel_x + 10, panel_y + 85 + 20 * i))
+    panel_rect = pygame.Rect(0, TABS_HEIGHT, TEXTBOX_WIDTH, HEIGHT - TABS_HEIGHT)
+    pygame.draw.rect(screen, (220, 230, 240), panel_rect)
+    pygame.draw.rect(screen, (70, 70, 70), panel_rect, 1)
+
+    sidebar_w = TEXTBOX_WIDTH
+    sidebar_h = HEIGHT - TABS_HEIGHT
+
+    margin_x = 18
+    content_w = sidebar_w - 2 * margin_x
+
+    title_font = pygame.font.SysFont(None, max(21, min(25, int(sidebar_h * 0.033))))
+    label_font = pygame.font.SysFont(None, max(15, min(18, int(sidebar_h * 0.023))))
+    small_label_font = pygame.font.SysFont(None, max(13, min(16, int(sidebar_h * 0.021))))
+    button_font = pygame.font.SysFont(None, max(13, min(16, int(sidebar_h * 0.021))))
+    text_font = pygame.font.SysFont(None, max(16, min(18, int(sidebar_h * 0.022))))
+
+    section_gap = max(24, min(38, int(sidebar_h * 0.05)))
+    row_gap = max(12, min(18, int(sidebar_h * 0.02)))
+
+    col_gap = 10
+    col_w = (content_w - 2 * col_gap) // 3
+
+    box_w = max(54, min(84, col_w - 10))
+    box_h = 26
+
+    def draw_input_box(field_key: str, x: int, y: int, w: int = box_w, h: int = box_h) -> pygame.Rect:
+        """
+        Draw one editable settings textbox and its current contents.
+        """
+        rect = pygame.Rect(x, y, w, h)
+        settings_buttons[field_key] = rect
+
+        bg = (255, 255, 255) if active_settings_field == field_key else (235, 240, 246)
+        pygame.draw.rect(screen, bg, rect)
+        pygame.draw.rect(screen, (95, 95, 95), rect, 2)
+
+        value = settings_values.get(field_key, "")
+        text_surface = text_font.render(value, True, (0, 0, 0))
+        screen.blit(text_surface, (rect.x + 5, rect.y + 5))
+
+        return rect
+
+    def draw_confirm_button(button_key: str, field_key: str, x: int, y: int, w: int = 46, h: int = 24) -> pygame.Rect:
+        """
+        Draw a green ENTER button only when its matching textbox is active.
+        """
+        rect = pygame.Rect(x, y, w, h)
+        settings_buttons[button_key] = rect
+
+        # Only show this ENTER button if the user is currently editing this field
+        if active_settings_field == field_key:
+            pygame.draw.rect(screen, (100, 200, 100), rect)
+            pygame.draw.rect(screen, (70, 70, 70), rect, 2)
+
+            btn_txt = button_font.render("ENTER", True, (0, 0, 0))
+            screen.blit(btn_txt, btn_txt.get_rect(center=rect.center))
+
+        return rect
+
+    def draw_settings_flag(field_key: str, cx: int, cy: int) -> None:
+        """
+        Draw a small colored status dot for one settings field.
+        """
+        color = settings_error_states.get(field_key, ((150, 150, 150), ""))[0]
+        pygame.draw.circle(screen, color, (cx, cy), 6)
+
+    def draw_axis_section(start_y: int, axis_label: str, prefix: str) -> int:
+        """
+        Draw one full axis section (X or Y).
+        prefix should be 'x' or 'y' so keys become x_min, x_points, x_max...
+        """
+        screen.blit(title_font.render(f"{axis_label} axis:", True, (0, 0, 0)), (margin_x, start_y))
+
+        label_y = start_y + 34
+        box_y = label_y + 26
+        enter_y = box_y + box_h + 12
+
+        col1_x = margin_x
+        col2_x = margin_x + col_w + col_gap
+        col3_x = margin_x + 2 * (col_w + col_gap)
+
+        screen.blit(label_font.render("Lower bound:", True, (0, 0, 0)), (col1_x, label_y))
+        screen.blit(label_font.render("# of points:", True, (0, 0, 0)), (col2_x, label_y))
+        screen.blit(label_font.render("Upper bound:", True, (0, 0, 0)), (col3_x, label_y))
+
+        box1_x = col1_x + (col_w - box_w) // 2
+        box2_x = col2_x + (col_w - box_w) // 2
+        box3_x = col3_x + (col_w - box_w) // 2
+
+        draw_input_box(f"{prefix}_min", box1_x, box_y)
+        draw_input_box(f"{prefix}_points", box2_x, box_y)
+        draw_input_box(f"{prefix}_max", box3_x, box_y)
+
+        # Small colored flags beside each textbox
+        draw_settings_flag(f"{prefix}_min", box1_x - 10, box_y + box_h // 2)
+        draw_settings_flag(f"{prefix}_points", box2_x - 10, box_y + box_h // 2)
+        draw_settings_flag(f"{prefix}_max", box3_x - 10, box_y + box_h // 2)
+
+        enter_w = 46
+        enter_h = 24
+        draw_confirm_button(f"{prefix}_min_enter", f"{prefix}_min", box1_x + (box_w - enter_w) // 2, enter_y, enter_w,
+                            enter_h)
+        draw_confirm_button(f"{prefix}_points_enter", f"{prefix}_points", box2_x + (box_w - enter_w) // 2, enter_y,
+                            enter_w, enter_h)
+        draw_confirm_button(f"{prefix}_max_enter", f"{prefix}_max", box3_x + (box_w - enter_w) // 2, enter_y, enter_w,
+                            enter_h)
+
+        return enter_y + enter_h + section_gap
+
+    def draw_current_mode_row(y: int) -> int:
+        """
+        Draw current angle mode on the left and a mode-toggle button on the right.
+        """
+        left_x = margin_x
+        control_w = 96
+        control_h = 32
+        control_x = sidebar_w - margin_x - control_w
+
+        screen.blit(label_font.render("Current mode:", True, (0, 0, 0)), (left_x, y))
+        screen.blit(label_font.render(ANGLE_MODE, True, (0, 0, 0)), (left_x, y + 20))
+
+        button_text = "Use degrees" if ANGLE_MODE == "radians" else "Use radians"
+
+        btn_rect = pygame.Rect(control_x, y + 1, control_w, control_h)
+        settings_buttons["angle_toggle"] = btn_rect
+        draw_button(screen, button_font, btn_rect, button_text)
+
+        return y + 44
+
+    def draw_max_depth_row(y: int) -> int:
+        """
+        Draw max recursive depth row with editable box and ENTER button.
+        """
+        left_x = margin_x
+
+        screen.blit(small_label_font.render("Maximum recursive", True, (0, 0, 0)), (left_x, y + 2))
+        screen.blit(small_label_font.render("depth:", True, (0, 0, 0)), (left_x, y + 18))
+
+        input_w = 52
+        input_h = 28
+        enter_w = 46
+        enter_h = 24
+        gap = 8
+        right_margin = 12
+
+        enter_x = sidebar_w - right_margin - enter_w
+        box_x = enter_x - gap - input_w
+        box_y = y + 8
+
+        draw_input_box("max_recursion", box_x, box_y, input_w, input_h)
+        draw_settings_flag("max_recursion", box_x - 10, box_y + input_h // 2)
+        draw_confirm_button("max_recursion_enter", "max_recursion", enter_x, box_y + (input_h - enter_h) // 2, enter_w,
+                            enter_h)
+
+        return y + 48
+
+    current_y = TABS_HEIGHT + 14
+    current_y = draw_axis_section(current_y, "X", "x")
+    current_y = draw_axis_section(current_y, "Y", "y")
+    current_y += 2
+    current_y = draw_current_mode_row(current_y)
+    current_y += row_gap
+    current_y = draw_max_depth_row(current_y + 4)
+
+    bottom_y = HEIGHT - 46
+    settings_buttons["size_prev"] = pygame.Rect(margin_x, bottom_y, 36, 26)
+    settings_buttons["size_next"] = pygame.Rect(margin_x + 44, bottom_y, 36, 26)
+
+    draw_button(screen, button_font, settings_buttons["size_prev"], "<")
+    draw_button(screen, button_font, settings_buttons["size_next"], ">")
 
 
-def apply_screen_size_from_index(index: int) -> None:
+def apply_settings_from_text() -> None:
+    """
+    Read the text from the Settings tab textboxes and apply them.
+
+
+    Large grids are allowed.
+    Only clamp when total grid points exceed MAX_TOTAL_GRID_POINTS.
+
+
+    If the total is too large, clamp the field the user is currently editing.
+    """
+    global X_GRID_RESOLUTION, X_MATH_MIN, X_MATH_MAX
+    global Y_GRID_RESOLUTION, Y_MATH_MIN, Y_MATH_MAX
+    global xstep, ystep, x_coords, y_coords, MAX_DEPTH
+
+    try:
+        new_x_min = float(settings_values["x_min"])
+        new_x_max = float(settings_values["x_max"])
+        new_x_points = int(settings_values["x_points"])
+
+        new_y_min = float(settings_values["y_min"])
+        new_y_max = float(settings_values["y_max"])
+        new_y_points = int(settings_values["y_points"])
+
+        new_max_depth = int(settings_values["max_recursion"])
+
+        if new_x_points <= 0 or new_y_points <= 0:
+            update_settings_error_states()
+            return
+        if new_x_min >= new_x_max or new_y_min >= new_y_max:
+            update_settings_error_states()
+            return
+        if new_max_depth < 0:
+            update_settings_error_states()
+            return
+
+        total_points = new_x_points * new_y_points
+
+        if total_points > MAX_TOTAL_GRID_POINTS:
+            # Clamp whichever field is currently being edited
+            if active_settings_field == "x_points":
+                new_x_points = max(1, MAX_TOTAL_GRID_POINTS // new_y_points)
+            elif active_settings_field == "y_points":
+                new_y_points = max(1, MAX_TOTAL_GRID_POINTS // new_x_points)
+            else:
+                # fallback: clamp y if we don't know which one caused it
+                new_y_points = max(1, MAX_TOTAL_GRID_POINTS // new_x_points)
+
+            # Sync the textboxes to the clamped values
+            settings_values["x_points"] = str(new_x_points)
+            settings_values["y_points"] = str(new_y_points)
+
+        X_MATH_MIN = new_x_min
+        X_MATH_MAX = new_x_max
+        X_GRID_RESOLUTION = new_x_points
+
+        Y_MATH_MIN = new_y_min
+        Y_MATH_MAX = new_y_max
+        Y_GRID_RESOLUTION = new_y_points
+
+        MAX_DEPTH = new_max_depth
+        settings_values["max_recursion"] = str(MAX_DEPTH)
+
+        xstep = (X_MATH_MAX - X_MATH_MIN) / X_GRID_RESOLUTION
+        ystep = (Y_MATH_MAX - Y_MATH_MIN) / Y_GRID_RESOLUTION
+
+        x_coords = [X_MATH_MIN + 1 + i * xstep for i in range(X_GRID_RESOLUTION)]
+        y_coords = [Y_MATH_MIN + j * ystep for j in range(Y_GRID_RESOLUTION)]
+
+        update_settings_error_states()
+        calculate_draw_bounds(X_MATH_MAX - X_MATH_MIN, Y_MATH_MAX - Y_MATH_MIN)
+        rerender_graph_surface(x_coords, y_coords)
+
+
+    except ValueError:
+        update_settings_error_states()
+
+
+def handle_settings_textbox_click(mouse_pos) -> None:
+    """
+    Activate whichever settings textbox was clicked.
+    """
+    global active_settings_field
+
+    textbox_keys = [
+        "x_min", "x_points", "x_max",
+        "y_min", "y_points", "y_max",
+        "max_recursion"
+    ]
+
+    active_settings_field = None
+    for key in textbox_keys:
+        if key in settings_buttons and settings_buttons[key].collidepoint(mouse_pos):
+            active_settings_field = key
+            break
+
+
+def handle_settings_keydown(event) -> None:
+    """
+    Send keyboard input into the currently active settings textbox.
+    """
+    global active_settings_field
+
+    if active_settings_field is None:
+        return
+
+    if event.key == pygame.K_RETURN:
+        apply_settings_from_text()
+        active_settings_field = None
+        update_settings_error_states()
+        return
+
+    if event.key == pygame.K_ESCAPE:
+        active_settings_field = None
+        update_settings_error_states()
+        return
+
+    if event.key == pygame.K_BACKSPACE:
+        settings_values[active_settings_field] = settings_values[active_settings_field][:-1]
+        update_settings_error_states()
+        return
+
+    allowed_chars = "0123456789.-"
+    if event.unicode in allowed_chars:
+        settings_values[active_settings_field] += event.unicode
+        update_settings_error_states()
+
+
+def update_settings_error_states() -> None:
+    """
+    Rebuild the color state for settings fields.
+
+
+    Meanings:
+    - Red: invalid
+    - Blue: warning
+    - Green: normal valid
+    - Grey: blank / can't evaluate yet
+    """
+    global settings_error_states
+    settings_error_states = {}
+
+    GREY = (150, 150, 150)
+    RED = (200, 50, 50)
+    BLUE = (50, 100, 200)
+    GREEN = (50, 200, 50)
+
+    keys = ["x_min", "x_points", "x_max", "y_min", "y_points", "y_max", "max_recursion"]
+
+    for key in keys:
+        settings_error_states[key] = (GREY, "")
+
+    # X bounds
+    try:
+        x_min = float(settings_values["x_min"])
+        x_max = float(settings_values["x_max"])
+        if x_min > x_max:
+            settings_error_states["x_min"] = (RED, "Lower bound is greater than upper bound.")
+            settings_error_states["x_max"] = (RED, "Upper bound is less than lower bound.")
+        else:
+            settings_error_states["x_min"] = (GREEN, "Valid")
+            settings_error_states["x_max"] = (GREEN, "Valid")
+    except ValueError:
+        pass
+
+    # Y bounds
+    try:
+        y_min = float(settings_values["y_min"])
+        y_max = float(settings_values["y_max"])
+        if y_min > y_max:
+            settings_error_states["y_min"] = (RED, "Lower bound is greater than upper bound.")
+            settings_error_states["y_max"] = (RED, "Upper bound is less than lower bound.")
+        else:
+            settings_error_states["y_min"] = (GREEN, "Valid")
+            settings_error_states["y_max"] = (GREEN, "Valid")
+    except ValueError:
+        pass
+
+    # X points
+    try:
+        x_points = int(settings_values["x_points"])
+        if x_points > 0:
+            settings_error_states["x_points"] = (GREEN, "Valid")
+    except ValueError:
+        pass
+
+    # Y points
+    try:
+        y_points = int(settings_values["y_points"])
+        if y_points > 0:
+            settings_error_states["y_points"] = (GREEN, "Valid")
+    except ValueError:
+        pass
+
+    # Total grid size warning / hard max
+    try:
+        x_points = int(settings_values["x_points"])
+        y_points = int(settings_values["y_points"])
+        total_points = x_points * y_points
+
+        if x_points > 0 and y_points > 0:
+            if total_points > MAX_TOTAL_GRID_POINTS:
+                settings_error_states["x_points"] = (BLUE, "Total grid exceeds hard limit and will be clamped.")
+                settings_error_states["y_points"] = (BLUE, "Total grid exceeds hard limit and will be clamped.")
+            elif total_points > WARNING_TOTAL_GRID_POINTS:
+                settings_error_states["x_points"] = (BLUE, "Total grid is very large.")
+                settings_error_states["y_points"] = (BLUE, "Total grid is very large.")
+    except ValueError:
+        pass
+
+    # Max recursion
+    try:
+        max_depth = int(settings_values["max_recursion"])
+        if max_depth < 0:
+            settings_error_states["max_recursion"] = (GREY, "")
+        elif max_depth < 3 or max_depth > 20:
+            settings_error_states["max_recursion"] = (BLUE, "Recursion depth is outside the normal range.")
+        else:
+            settings_error_states["max_recursion"] = (GREEN, "Valid")
+    except ValueError:
+        pass
+
+
+def apply_screen_size_from_index(index: int,xrange:float,yrange:float) -> None:
     global SCREEN_SIZE_INDEX, WIDTH, HEIGHT
     SCREEN_SIZE_INDEX = index % len(SCREEN_SIZE_OPTIONS)
     WIDTH, HEIGHT = SCREEN_SIZE_OPTIONS[SCREEN_SIZE_INDEX]
-    calculate_draw_bounds()
-
-
-def cycle_ast_selection(direction: int) -> None:
-    global AST_SELECTED_ID
-    if len(functionsList) == 0:
-        AST_SELECTED_ID = None
-        return
-    ids = [item[0] for item in functionsList]
-    if AST_SELECTED_ID not in ids:
-        AST_SELECTED_ID = ids[0]
-        return
-    current_index = ids.index(AST_SELECTED_ID)
-    AST_SELECTED_ID = ids[(current_index + direction) % len(ids)]
-
-    # COMMENTS SHOULD BE ADDED TO SECTION ABOVE
+    calculate_draw_bounds(xrange,yrange)
 
 
 # --- MAIN EXECUTION ---
 if __name__ == "__main__":
-    calculate_draw_bounds()
-    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    X_GRID_RESOLUTION = 100
+    X_MATH_MIN, X_MATH_MAX = -15.0, 15.0
+    Y_GRID_RESOLUTION = 100
+    Y_MATH_MIN, Y_MATH_MAX = -15.0, 15.0
+    calculate_draw_bounds(X_MATH_MAX-X_MATH_MIN,Y_MATH_MAX-Y_MATH_MIN)
+    screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
     pygame.display.set_caption("Render Engine")
 
-    GRID_RESOLUTION = 100
-    MATH_MIN, MATH_MAX = -15.0, 15.0
-    step = (MATH_MAX - MATH_MIN) / GRID_RESOLUTION
-    x_coords = [MATH_MIN + 1 + i * step for i in range(GRID_RESOLUTION)]
-    y_coords = [MATH_MIN + j * step for j in range(GRID_RESOLUTION)]
+
+    settings_values["x_min"] = str(X_MATH_MIN)
+    settings_values["x_points"] = str(X_GRID_RESOLUTION)
+    settings_values["x_max"] = str(X_MATH_MAX)
+    settings_values["y_min"] = str(Y_MATH_MIN)
+    settings_values["y_points"] = str(Y_GRID_RESOLUTION)
+    settings_values["y_max"] = str(Y_MATH_MAX)
+    settings_values["max_recursion"] = str(MAX_DEPTH)
+    update_settings_error_states()
+    xstep = (X_MATH_MAX - X_MATH_MIN) / X_GRID_RESOLUTION
+    # HOLY SHIT IS THAT A GEOMETRY DASH REFERENCE???????????
+    ystep = (Y_MATH_MAX - Y_MATH_MIN) / Y_GRID_RESOLUTION
+    x_coords = [X_MATH_MIN + 1 + i * xstep for i in range(X_GRID_RESOLUTION)]
+    y_coords = [Y_MATH_MIN + j * ystep for j in range(Y_GRID_RESOLUTION)]
 
     # Generate a static surface to hold the math grid so UI doesn't lag
 
@@ -651,7 +1000,7 @@ if __name__ == "__main__":
 
             if event.type == pygame.VIDEORESIZE:
                 WIDTH, HEIGHT = event.w, event.h
-                calculate_draw_bounds()  # Recalculate aspect ratio
+                calculate_draw_bounds(X_MATH_MAX-X_MATH_MIN,Y_MATH_MAX-Y_MATH_MIN)  # Recalculate aspect ratio
                 screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
                 rerender_graph_surface(x_coords, y_coords)
 
@@ -669,7 +1018,7 @@ if __name__ == "__main__":
                     if event.button == 4:       # scroll up
                         scroll_y_vals[0] -= 5
                     elif event.button == 5:     # scroll down
-                        scroll_y_vals[0] = min(0,scroll_y_vals[0]+5)
+                        scroll_y_vals[0] = min(0, scroll_y_vals[0] + 5)
 
                     clicked_any_field = False
 
@@ -682,6 +1031,7 @@ if __name__ == "__main__":
                             # If confirmed, recalculate grid and regenerate UI list to add the next empty block
                             if needs_redraw:
                                 print("Recalculating Math...")
+                                calculate_draw_bounds(X_MATH_MAX - X_MATH_MIN, Y_MATH_MAX - Y_MATH_MIN)  # Recalculate aspect ratio
                                 rerender_graph_surface(x_coords, y_coords)
                                 function_ui_fields = [FunctionsEntryField(i, functionsList) for i in range(len(functionsList) + 1)]
 
@@ -694,7 +1044,7 @@ if __name__ == "__main__":
                     if not clicked_any_field:
                         for field in function_ui_fields: field.cancel()
 
-                # TODO: the other 3 panels
+                # TODO: the other 3 panels (Justin)
                 if current_panel == 'Colors':
                     # deal with buttons here
                     continue
@@ -708,37 +1058,53 @@ if __name__ == "__main__":
                     continue
 
                 if current_panel == 'Settings':
-                    # TODO: import-export of text
-                    # Remember that import should just create new lines
+                    # 1. First check the ENTER button for the currently active field
+                    if active_settings_field is not None:
+                        active_enter_key = f"{active_settings_field}_enter"
+                        if settings_buttons.get(active_enter_key) and settings_buttons[active_enter_key].collidepoint(
+                                mouse_pos):
+                            apply_settings_from_text()
+                            active_settings_field = None
+                            continue
+
+                    # 2. Then check angle toggle
                     if settings_buttons.get("angle_toggle") and settings_buttons["angle_toggle"].collidepoint(
                             mouse_pos):
                         ANGLE_MODE = "degrees" if ANGLE_MODE == "radians" else "radians"
                         update_functions()
+                        calculate_draw_bounds(X_MATH_MAX - X_MATH_MIN, Y_MATH_MAX - Y_MATH_MIN)  # Recalculate aspect ratio
                         rerender_graph_surface(x_coords, y_coords)
-                    elif settings_buttons.get("size_prev") and settings_buttons["size_prev"].collidepoint(mouse_pos):
-                        apply_screen_size_from_index(SCREEN_SIZE_INDEX - 1)
-                        screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
-                        rerender_graph_surface(x_coords, y_coords)
-                    elif settings_buttons.get("size_next") and settings_buttons["size_next"].collidepoint(mouse_pos):
-                        apply_screen_size_from_index(SCREEN_SIZE_INDEX + 1)
-                        screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
-                        rerender_graph_surface(x_coords, y_coords)
+                        active_settings_field = None
+                        continue
 
-                # if SHOW_AST:
-                # if ast_buttons.get("toggle_ast") and ast_buttons["toggle_ast"].collidepoint(mouse_pos):
-                #    SHOW_AST = False
-                #    if ast_buttons.get("ast_prev") and ast_buttons["ast_prev"].collidepoint(mouse_pos):
-                #        cycle_ast_selection(-1)
-                #    elif ast_buttons.get("ast_next") and ast_buttons["ast_next"].collidepoint(mouse_pos):
-                #        cycle_ast_selection(1)
-                # if toggle_ast_button.collidepoint(mouse_pos) and current_panel == 'Functions':
-                #    SHOW_AST = not SHOW_AST
+                    # 3. Screen size buttons
+                    if settings_buttons.get("size_prev") and settings_buttons["size_prev"].collidepoint(mouse_pos):
+                        apply_screen_size_from_index(SCREEN_SIZE_INDEX - 1,X_MATH_MAX-X_MATH_MIN,Y_MATH_MAX-Y_MATH_MIN)
+                        calculate_draw_bounds(X_MATH_MAX - X_MATH_MIN, Y_MATH_MAX - Y_MATH_MIN)
+                        screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
+                        rerender_graph_surface(x_coords, y_coords)
+                        active_settings_field = None
+                        continue
+
+                    if settings_buttons.get("size_next") and settings_buttons["size_next"].collidepoint(mouse_pos):
+                        apply_screen_size_from_index(SCREEN_SIZE_INDEX + 1,X_MATH_MAX-X_MATH_MIN,Y_MATH_MAX-Y_MATH_MIN)
+                        calculate_draw_bounds(X_MATH_MAX - X_MATH_MIN, Y_MATH_MAX - Y_MATH_MIN)
+                        screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
+                        rerender_graph_surface(x_coords, y_coords)
+                        active_settings_field = None
+                        continue
+
+                    # 4. Finally, if none of the above were clicked, activate a textbox
+                    handle_settings_textbox_click(mouse_pos)
 
             if event.type == pygame.KEYDOWN:
                 if current_panel == 'Functions':
                     for field in function_ui_fields:
                         field.handle_keydown(event)
 
+                elif current_panel == 'Settings':
+
+                    handle_settings_keydown(event)
         # 4. DRAW APPROPRIATE UI OVERLAYS
         if current_panel == 'Functions':
             for field in function_ui_fields:
