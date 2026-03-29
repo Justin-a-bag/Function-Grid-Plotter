@@ -69,6 +69,8 @@ drawFinal = []
 # Maps list index -> ((R, G, B), "Error Message")
 error_states = {}
 settings_error_states = {}
+restriction_error_states = {}
+draw_error_states = {}
 
 pygame.init()
 pygame.key.set_repeat(500, 50)
@@ -98,7 +100,7 @@ def calculate_draw_bounds(xrange: float, yrange: float):
     DRAW_MAX_Y = DRAW_MIN_Y + grid_size_y
 
 
-class DataEntryField:
+class FunctionsEntryField:
     """
     Replaces the Textbox. Acts as a State Machine for each list item.
     """
@@ -282,7 +284,7 @@ class DataEntryField:
         return True  # Signals the main loop that we need to recalculate the math grid
 
 
-class ColorsEntryField(DataEntryField):
+class ColorsEntryField(FunctionsEntryField):
     """
     Replaces the Textbox. Acts as a State Machine for each list item. Contains vital information for hitboxes in Pygame
     """
@@ -320,7 +322,7 @@ class ColorsEntryField(DataEntryField):
         pygame.draw.rect(surface, (150, 150, 150), self.rect, 1)  # Border
 
         #Added for Scrolling, not sure if it's correct
-        self.y = self.Y+scroll_y_vals[0]
+        self.y = self.Y+scroll_y_vals[1]
         self.rect.y = self.y
         self.id_rect.y = self.y + 10
         self.data_rect1.y = self.y + 10
@@ -472,12 +474,261 @@ class ColorsEntryField(DataEntryField):
 
 
 
+
+
+class RestrictionsEntryField(FunctionsEntryField):
+    """
+    Entry field for Restrictions tab: ID, Target ID, and Boolean toggle
+    """
+    def __init__(self, index: int, list_ref: list):
+        super().__init__(index, list_ref)
+        if index < len(list_ref):
+            self.checkSmaller = list_ref[index][2]
+        else:
+            self.checkSmaller = False
+            
+        self.backup_checkSmaller = self.checkSmaller
+
+        # Sub-rectangles for hit-testing
+        self.id_rect = pygame.Rect(30, self.y + 10, 50, 30)
+        self.full_data_rect = pygame.Rect(85, self.y + 10, 150, 30) # for generic click checking
+        self.data_rect1 = pygame.Rect(85, self.y + 10, 110, 30) # for the target func id
+        self.bool_rect = pygame.Rect(200, self.y + 10, 35, 30)  # for the boolean toggler
+        self.btn_enter = pygame.Rect(240, self.y + 10, 50, 30)
+
+    def draw(self, surface: pygame.Surface) -> None:
+        is_active = self.editing_id or self.editing_data
+        bg_color = INDENT_COLOR if is_active else TEXTBOX_COLOR
+        pygame.draw.rect(surface, bg_color, self.rect)
+        pygame.draw.rect(surface, (150, 150, 150), self.rect, 1)
+
+        self.y = self.Y + scroll_y_vals[2]
+        self.rect.y = self.y
+        self.id_rect.y = self.y + 10
+        self.data_rect1.y = self.y + 10
+        self.bool_rect.y = self.y + 10
+        self.full_data_rect.y = self.y + 10
+        self.btn_enter.y = self.y + 10
+
+        if self.y + TEXTBOX_HEIGHT < TABS_HEIGHT or self.y > HEIGHT:
+            return
+
+        # Status Flag
+        flag_color = restriction_error_states.get(self.index, ((150, 150, 150), ""))[0]
+        pygame.draw.circle(surface, flag_color, (15, self.y + 25), 6)
+
+        # ID Field
+        pygame.draw.rect(surface, (255, 255, 255) if self.editing_id else bg_color, self.id_rect)
+        id_surf = font.render(self.id_str, True, TEXT_COLOR)
+        surface.blit(id_surf, (self.id_rect.x + 5, self.id_rect.y + 7))
+
+        # Target Func Field
+        pygame.draw.rect(surface, (255, 255, 255) if self.editing_data else bg_color, self.data_rect1)
+        data_surf = font.render(self.data_str, True, TEXT_COLOR)
+        clip_area = pygame.Rect(self.scroll_x, 0, self.data_rect1.width - 5, self.data_rect1.height)
+        surface.blit(data_surf, (self.data_rect1.x + 5, self.data_rect1.y + 7), clip_area)
+        max_scroll = max(0, data_surf.get_width() - (self.data_rect1.width - 5))
+        self.scroll_x = max(0, min(self.scroll_x, max_scroll))
+
+        # Boolean Field
+        pygame.draw.rect(surface, bg_color, self.bool_rect)
+        pygame.draw.rect(surface, (0, 0, 0), self.bool_rect, 1)
+        # Display <= 0 or >= 0 based on checkSmaller
+        bool_str = "<= 0" if self.checkSmaller else ">= 0"
+        bool_surf = small_font.render(bool_str, True, TEXT_COLOR)
+        surface.blit(bool_surf, (self.bool_rect.x + 2, self.bool_rect.y + 10))
+
+        if is_active:
+            pygame.draw.rect(surface, (100, 200, 100), self.btn_enter)
+            btn_txt = small_font.render("ENTER", True, (0, 0, 0))
+            surface.blit(btn_txt, (self.btn_enter.x + 5, self.btn_enter.y + 10))
+
+    def handle_click(self, mouse_pos) -> bool:
+        if self.id_rect.collidepoint(mouse_pos):
+            self.editing_id = True
+            self.editing_data = False
+        elif self.data_rect1.collidepoint(mouse_pos):
+            self.editing_data = True
+            self.editing_id = False
+        elif self.bool_rect.collidepoint(mouse_pos):
+            self.checkSmaller = not self.checkSmaller 
+            self.editing_data = True
+            self.editing_id = False
+        elif self.btn_enter.collidepoint(mouse_pos) and (self.editing_id or self.editing_data):
+            return self.confirm()
+        return False
+
+    def handle_keydown(self, event) -> None:
+        if self.editing_id:
+            if event.key == pygame.K_BACKSPACE:
+                self.id_str = self.id_str[:-1]
+            else:
+                self.id_str += event.unicode
+        elif self.editing_data:
+            if event.key == pygame.K_BACKSPACE:
+                self.data_str = self.data_str[:-1]
+            elif event.key == pygame.K_LEFT:
+                self.scroll_x -= 10
+            elif event.key == pygame.K_RIGHT:
+                self.scroll_x += 10
+            else:
+                self.data_str += event.unicode
+
+    def cancel(self):
+        self.id_str = self.backup_id
+        self.data_str = self.backup_data
+        self.checkSmaller = self.backup_checkSmaller
+        self.editing_id = False
+        self.editing_data = False
+
+    def confirm(self) -> bool:
+        global restrictionsList
+        if self.index < len(restrictionsList):
+            restrictionsList[self.index] = (self.id_str, self.data_str, self.checkSmaller)
+        else:
+            if self.id_str.strip() != "":
+                restrictionsList.append((self.id_str, self.data_str, self.checkSmaller))
+
+        self.backup_id = self.id_str
+        self.backup_data = self.data_str
+        self.backup_checkSmaller = self.checkSmaller
+        self.editing_id = False
+        self.editing_data = False
+
+        update_functions()
+        return True
+
+class DrawEntryField(FunctionsEntryField):
+    """
+    Entry field for Draw tab: Func ID, Color ID, Rest ID
+    """
+    def __init__(self, index: int, list_ref: list):
+        super().__init__(index, list_ref)
+        if index < len(list_ref):
+            self.data_str_c = list_ref[index][1]
+            self.data_str_r = list_ref[index][2]
+        else:
+            self.data_str_c = ""
+            self.data_str_r = ""
+            
+        self.backup_data_c = self.data_str_c
+        self.backup_data_r = self.data_str_r
+
+        self.id_rect = pygame.Rect(30, self.y + 10, 60, 30)   # func id
+        self.full_data_rect = pygame.Rect(95, self.y + 10, 140, 30)
+        self.data_rect1 = pygame.Rect(95, self.y + 10, 65, 30) # color id
+        self.data_rect2 = pygame.Rect(165, self.y + 10, 70, 30) # rest id
+        self.btn_enter = pygame.Rect(240, self.y + 10, 50, 30)
+        self.data_index = 0
+
+    def draw(self, surface: pygame.Surface) -> None:
+        is_active = self.editing_id or self.editing_data
+        bg_color = INDENT_COLOR if is_active else TEXTBOX_COLOR
+        pygame.draw.rect(surface, bg_color, self.rect)
+        pygame.draw.rect(surface, (150, 150, 150), self.rect, 1)
+
+        self.y = self.Y + scroll_y_vals[3]
+        self.rect.y = self.y
+        self.id_rect.y = self.y + 10
+        self.data_rect1.y = self.y + 10
+        self.data_rect2.y = self.y + 10
+        self.full_data_rect.y = self.y + 10
+        self.btn_enter.y = self.y + 10
+
+        if self.y + TEXTBOX_HEIGHT < TABS_HEIGHT or self.y > HEIGHT:
+            return
+
+        # Status Flag
+        flag_color = draw_error_states.get(self.index, ((150, 150, 150), ""))[0]
+        pygame.draw.circle(surface, flag_color, (15, self.y + 25), 6)
+
+        # Func ID (stored in id_str basically from super class)
+        pygame.draw.rect(surface, (255, 255, 255) if self.editing_id else bg_color, self.id_rect)
+        id_surf = font.render(self.id_str, True, TEXT_COLOR)
+        surface.blit(id_surf, (self.id_rect.x + 5, self.id_rect.y + 7))
+
+        # Color ID
+        pygame.draw.rect(surface, (255, 255, 255) if self.editing_data and self.data_index == 0 else bg_color, self.data_rect1)
+        data_surf1 = font.render(self.data_str_c, True, TEXT_COLOR)
+        surface.blit(data_surf1, (self.data_rect1.x + 5, self.data_rect1.y + 7))
+
+        # Rest ID
+        pygame.draw.rect(surface, (255, 255, 255) if self.editing_data and self.data_index == 1 else bg_color, self.data_rect2)
+        data_surf2 = font.render(self.data_str_r, True, TEXT_COLOR)
+        surface.blit(data_surf2, (self.data_rect2.x + 5, self.data_rect2.y + 7))
+
+        if is_active:
+            pygame.draw.rect(surface, (100, 200, 100), self.btn_enter)
+            btn_txt = small_font.render("ENTER", True, (0, 0, 0))
+            surface.blit(btn_txt, (self.btn_enter.x + 5, self.btn_enter.y + 10))
+
+    def handle_click(self, mouse_pos) -> bool:
+        if self.id_rect.collidepoint(mouse_pos):
+            self.editing_id = True
+            self.editing_data = False
+        elif self.full_data_rect.collidepoint(mouse_pos):
+            self.editing_data = True
+            self.editing_id = False
+            if self.data_rect1.collidepoint(mouse_pos):
+                self.data_index = 0
+            elif self.data_rect2.collidepoint(mouse_pos):
+                self.data_index = 1
+        elif self.btn_enter.collidepoint(mouse_pos) and (self.editing_id or self.editing_data):
+            return self.confirm()
+        return False
+
+    def handle_keydown(self, event) -> None:
+        if self.editing_id:
+            if event.key == pygame.K_BACKSPACE:
+                self.id_str = self.id_str[:-1]
+            else:
+                self.id_str += event.unicode
+        elif self.editing_data:
+            if event.key == pygame.K_BACKSPACE:
+                if self.data_index == 0:
+                    self.data_str_c = self.data_str_c[:-1]
+                else:
+                    self.data_str_r = self.data_str_r[:-1]
+            else:
+                if self.data_index == 0:
+                    self.data_str_c += event.unicode
+                else:
+                    self.data_str_r += event.unicode
+
+    def cancel(self):
+        self.id_str = self.backup_id
+        self.data_str_c = self.backup_data_c
+        self.data_str_r = self.backup_data_r
+        self.editing_id = False
+        self.editing_data = False
+
+    def confirm(self) -> bool:
+        global drawList
+        if self.index < len(drawList):
+            drawList[self.index] = (self.id_str, self.data_str_c, self.data_str_r)
+        else:
+            if self.id_str.strip() != "":
+                drawList.append((self.id_str, self.data_str_c, self.data_str_r))
+
+        self.backup_id = self.id_str
+        self.backup_data_c = self.data_str_c
+        self.backup_data_r = self.data_str_r
+        self.editing_id = False
+        self.editing_data = False
+
+        update_functions()
+        return True
+
+
 def update_functions() -> None:
+
     """Rebuilds all dictionaries and runs error checking validation."""
-    global functionsDict, colorsDict, restrictionsDict, drawFinal, error_states
+    global functionsDict, colorsDict, restrictionsDict, drawFinal, error_states, restriction_error_states, draw_error_states
 
     functionsDict.clear()
     error_states.clear()
+    restriction_error_states.clear()
+    draw_error_states.clear()
     seen_ids = set()
 
     # --- 1. BUILD FUNCTIONS AND CHECK ERRORS ---
@@ -1041,8 +1292,8 @@ if __name__ == "__main__":
     function_ui_fields = [FunctionsEntryField(i, functionsList) for i in range(len(functionsList) + 1)]
     colors_ui_fields = [ColorsEntryField(i, colorsList) for i in range(len(colorsList) + 1)]
 
-    rest_ui_fields = [DataEntryField(i, restrictionsList) for i in range(len(colorsList) + 1)]
-    draw_ui_fields = [DataEntryField(i, drawList) for i in range(len(colorsList) + 1)]
+    rest_ui_fields = [RestrictionsEntryField(i, restrictionsList) for i in range(len(restrictionsList) + 1)]
+    draw_ui_fields = [DrawEntryField(i, drawList) for i in range(len(drawList) + 1)]
 
     running = True
     while running:
@@ -1081,7 +1332,7 @@ if __name__ == "__main__":
 
                     clicked_any_field = False
 
-                    for field in ui_fields:
+                    for field in function_ui_fields:
                         # TODO: allow users to move around entry fields (applies for all 4 tabs) and when one gets deleted, it removes that text thing and shifts the others (M)
                         if field.rect.collidepoint(mouse_pos):
                             clicked_any_field = True
@@ -1092,7 +1343,7 @@ if __name__ == "__main__":
                                 print("Recalculating Math...")
 
                                 rerender_graph_surface(x_coords, y_coords)
-                                ui_fields = [DataEntryField(i, functionsList) for i in range(len(functionsList) + 1)]
+                                function_ui_fields = [FunctionsEntryField(i, functionsList) for i in range(len(functionsList) + 1)]
 
                         else:
                             # If they clicked another field, cancel the edit on this one
@@ -1101,12 +1352,28 @@ if __name__ == "__main__":
 
                     # If they clicked entirely outside the UI sidebar, cancel everything
                     if not clicked_any_field:
-                        for field in ui_fields: field.cancel()
+                        for field in function_ui_fields: field.cancel()
 
                 # TODO: the other 3 panels (Justin)
                 if current_panel == 'Colors':
-                    # deal with buttons here
-                    continue
+                    if event.button == 4:       # scroll up
+                        scroll_y_vals[1] -= 5
+                    elif event.button == 5:     # scroll down
+                        scroll_y_vals[1] = min(0, scroll_y_vals[1] + 5)
+
+                    clicked_any_field = False
+                    for field in colors_ui_fields:
+                        if field.rect.collidepoint(mouse_pos):
+                            clicked_any_field = True
+                            needs_redraw = field.handle_click(mouse_pos)
+                            if needs_redraw:
+                                rerender_graph_surface(x_coords, y_coords)
+                                colors_ui_fields = [ColorsEntryField(i, colorsList) for i in range(len(colorsList) + 1)]
+                        else:
+                            if field.editing_id or field.editing_data:
+                                field.cancel()
+                    if not clicked_any_field:
+                        for field in colors_ui_fields: field.cancel()
 
                 if current_panel == 'Restrictions':
                     if event.button == 4:       # scroll up
@@ -1124,7 +1391,7 @@ if __name__ == "__main__":
                                 rerender_graph_surface(x_coords, y_coords)
                                 rest_ui_fields = [RestrictionsEntryField(i, restrictionsList) for i in range(len(restrictionsList) + 1)]
                         else:
-                            if field.editing_id or field.editing_data:
+                            if field.editing_id or getattr(field, 'editing_data', False):
                                 field.cancel()
                     if not clicked_any_field:
                         for field in rest_ui_fields: field.cancel()
@@ -1145,7 +1412,7 @@ if __name__ == "__main__":
                                 rerender_graph_surface(x_coords, y_coords)
                                 draw_ui_fields = [DrawEntryField(i, drawList) for i in range(len(drawList) + 1)]
                         else:
-                            if field.editing_func or field.editing_color or field.editing_rest:
+                            if field.editing_id or getattr(field, 'editing_data', False):
                                 field.cancel()
                     if not clicked_any_field:
                         for field in draw_ui_fields: field.cancel()
@@ -1194,7 +1461,7 @@ if __name__ == "__main__":
 
             if event.type == pygame.KEYDOWN:
                 if current_panel == 'Functions':
-                    for field in ui_fields:
+                    for field in function_ui_fields:
                         field.handle_keydown(event)
                 elif current_panel == 'Colors':
                     for field in colors_ui_fields:
@@ -1209,7 +1476,7 @@ if __name__ == "__main__":
                     handle_settings_keydown(event)
         # 4. DRAW APPROPRIATE UI OVERLAYS
         if current_panel == 'Functions':
-            for field in ui_fields:
+            for field in function_ui_fields:
                 field.draw(screen)
             # pygame.draw.rect(screen, (225, 225, 225), toggle_ast_button)
             # pygame.draw.rect(screen, (0, 0, 0), toggle_ast_button, 2)
@@ -1220,7 +1487,13 @@ if __name__ == "__main__":
             for field in colors_ui_fields:
                 field.draw(screen)
 
-        # elif current_panel == 'Restrictions':
+        elif current_panel == 'Restrictions':
+            for field in rest_ui_fields:
+                field.draw(screen)
+                
+        elif current_panel == 'Draw':
+            for field in draw_ui_fields:
+                field.draw(screen)
 
         elif current_panel == 'Settings':
             render_settings_overlay(screen, font)
