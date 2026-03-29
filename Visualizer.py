@@ -17,7 +17,7 @@ TEXTBOX_COLOR = (240, 240, 240)
 INDENT_COLOR = (200, 200, 200)
 TEXT_COLOR = (10, 10, 10)
 TABS_WIDTH, TABS_HEIGHT = 60, 50
-PANELS = ['Functions', 'Colors', 'Restrictions', 'Draw', 'Settings']
+PANELS = ['Functions', 'Colours', 'Restrictions', 'Draw', 'Settings']
 current_panel = 'Functions'
 
 # Settings & AST Globals
@@ -893,7 +893,7 @@ def update_functions() -> None:
             
         errs = []
         if x[0] not in functionsDict: errs.append("Function ID not found")
-        if x[1] not in colorsDict: errs.append("Color ID not found")
+        if x[1] not in colorsDict: errs.append("Colour ID not found")
         if x[2] not in restrictionsDict: errs.append("Restriction ID not found")
         
         if len(errs) > 0:
@@ -1455,7 +1455,7 @@ if __name__ == "__main__":
                         for field in function_ui_fields: field.cancel()
 
                 # TODO: the other 3 panels (Justin)
-                if current_panel == 'Colors':
+                if current_panel == 'Colours':
                     if event.button == 4:       # scroll up
                         scroll_y_vals[1] -= 5
                     elif event.button == 5:     # scroll down
@@ -1563,7 +1563,7 @@ if __name__ == "__main__":
                 if current_panel == 'Functions':
                     for field in function_ui_fields:
                         field.handle_keydown(event)
-                elif current_panel == 'Colors':
+                elif current_panel == 'Colours':
                     for field in colors_ui_fields:
                         field.handle_keydown(event)
                 elif current_panel == 'Restrictions':
@@ -1583,7 +1583,7 @@ if __name__ == "__main__":
             # label = font.render("Toggle AST", True, (0, 0, 0))
             # screen.blit(label, (195, 7))
 
-        elif current_panel == 'Colors':
+        elif current_panel == 'Colours':
             for field in colors_ui_fields:
                 field.draw(screen)
 
