@@ -23,6 +23,8 @@ class DataEntryField:
         else:
             self.id_str = ""
             self.data_str = ""
+        # create a cursor
+        self.cursor_position = len(self.data_str)
 
         # Backups for when the user clicks off (Cancels)
         self.backup_id = self.id_str
