@@ -60,7 +60,7 @@ functionsList = [
 ]
 
 functionsDict = {}
-colorsList = [("my_color", "r", "g", "b"), ("rgb", "255((x-(cos(3.7(x+0.8))/3))/2.8+1.28)",
+colorsList = [("rgb", "255((x-(cos(3.7(x+0.8))/3))/2.8+1.28)",
                                             "255(sin(1.5(x+pi/2))/2.8+0.5)",
                                             "255(e^(-(3(x+0.99))^2)/3-x/9+0.1)")]
 colorsDict = {}
@@ -266,7 +266,7 @@ class ColorsEntryField(DataEntryField):
         pygame.draw.rect(surface, (150, 150, 150), self.rect, 1)  # Border
 
         #Added for Scrolling, not sure if it's correct
-        self.y = self.Y+scroll_y_vals[0]
+        self.y = self.Y+scroll_y_vals[1]
         self.rect.y = self.y
         self.id_rect.y = self.y + 10
         self.data_rect1.y = self.y + 10
@@ -292,9 +292,9 @@ class ColorsEntryField(DataEntryField):
         pygame.draw.rect(surface, (255, 255, 255) if self.editing_data and self.data_index == 0 else bg_color,
                          self.data_rect1)
         pygame.draw.rect(surface, (255, 255, 255) if self.editing_data and self.data_index == 1 else bg_color,
-                         self.data_rect1)
+                         self.data_rect2)
         pygame.draw.rect(surface, (255, 255, 255) if self.editing_data and self.data_index == 2 else bg_color,
-                         self.data_rect1)
+                         self.data_rect3)
 
         # ast_to_string logic: if NOT editing, show the formatted AST string
         display_str = self.data_str
@@ -1098,7 +1098,37 @@ if __name__ == "__main__":
                 # TODO: the other 3 panels (Justin)
                 if current_panel == 'Colors':
                     # deal with buttons here
-                    continue
+                    if event.button == 4:  # scroll up
+                        scroll_y_vals[1] -= 5
+                    elif event.button == 5:  # scroll down
+                        scroll_y_vals[1] = min(0, scroll_y_vals[1] + 5)
+
+                    clicked_any_field = False
+
+                    for field in colors_ui_fields:
+                        # TODO: allow users to move around entry fields (applies for all 4 tabs) and when one gets deleted, it removes that text thing and shifts the others
+                        if field.rect.collidepoint(mouse_pos):
+                            clicked_any_field = True
+                            needs_redraw = field.handle_click(mouse_pos)
+
+                            # If confirmed, recalculate grid and regenerate UI list to add the next empty block
+                            if needs_redraw:
+                                print("Recalculating Math...")
+                                calculate_draw_bounds(X_MATH_MAX - X_MATH_MIN,
+                                                      Y_MATH_MAX - Y_MATH_MIN)  # Recalculate aspect ratio
+                                rerender_graph_surface(x_coords, y_coords)
+                                colors_ui_fields = [ColorsEntryField(i, colorsList) for i in
+                                                      range(len(colorsList) + 1)]
+
+                        else:
+                            # If they clicked another field, cancel the edit on this one
+                            if field.editing_id or field.editing_data:
+                                field.cancel()
+
+                    # If they clicked entirely outside the UI sidebar, cancel everything
+                    if not clicked_any_field:
+                        for field in colors_ui_fields:
+                            field.cancel()
 
                 if current_panel == 'Restricions':
                     # deal with buttons here
@@ -1151,6 +1181,10 @@ if __name__ == "__main__":
             if event.type == pygame.KEYDOWN:
                 if current_panel == 'Functions':
                     for field in function_ui_fields:
+                        field.handle_keydown(event)
+
+                if current_panel == 'Colors':
+                    for field in colors_ui_fields:
                         field.handle_keydown(event)
 
                 elif current_panel == 'Settings':
