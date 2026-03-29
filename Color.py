@@ -3,6 +3,7 @@ import math
 
 from Equation import Equation
 
+
 class Color:
     """
     A wrapper class that maps values to colors
@@ -16,7 +17,7 @@ class Color:
         self.green = green
         self.blue = blue
 
-    def getColorTuple(self, zval: float,angle_mode="potato",env:dict = None, depth = 0) -> tuple:
+    def getColorTuple(self, zval: float, angle_mode="potato", env: dict = None, depth=0) -> tuple:
         """
         returns the color tuple that corresponds to the color at any specific location
         remember that color is a tuple of 3 integers representing rgb values
@@ -25,7 +26,9 @@ class Color:
         can you guys decide if we should just drop immediately to 0/255 or use a 1-1 mapping system?
         also if we should check for absolute max/min values and scale values accordingly?
         """
-        rval, gval, bval = self.red.evaluate(zval, 0,angle_mode,env,depth), self.green.evaluate(zval, 0,angle_mode,env,depth), self.blue.evaluate(zval, 0,angle_mode,env,depth)
+        rval, gval, bval = (self.red.evaluate(zval, 0, angle_mode, env, depth),
+                            self.green.evaluate(zval, 0, angle_mode, env, depth),
+                            self.blue.evaluate(zval, 0, angle_mode, env, depth))
 
         if any(c == d for c in [rval, gval, bval] for d in ['invalid', 'nan']):
             # THIS SHOULD RETURN A BASE NULL VALUE
@@ -45,7 +48,7 @@ class Color:
         return int(rval), int(gval), int(bval)
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     r = Equation("4+x+y")
     g = Equation("2*x-y")
     b = Equation("3/x+5+3+y")

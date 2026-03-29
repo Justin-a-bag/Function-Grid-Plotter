@@ -1,5 +1,6 @@
 import pygame
-from Visualizer import TEXTBOX_Y, TEXTBOX_HEIGHT, TEXTBOX_WIDTH
+TEXTBOX_Y = 50
+TEXTBOX_WIDTH, TEXTBOX_HEIGHT = 300, 50
 
 
 class DataEntryField:

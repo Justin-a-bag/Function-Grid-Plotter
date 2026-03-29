@@ -21,14 +21,14 @@ I'm getting off track with my ramblings
 alright so there's a few things that need to be done for the visualizer
 - the input bars
 - tree to string (no way you guys are gonna be traversing a tree because i don't wanna do this)
-- making these resulting strings editable after the thing 
+- making these resulting strings editable after the thing
 (actually idk if this is how you wanna implement it)
 - making it so that you make new input bars every time you finish editing a bar
 - A list of all the things written and pointers to where to find them elsewhere
 - lists of equations, drawn functions, data types, etc
 - the side dash board meant to draw the equation
 
-Additional things you guys can try to do: 
+Additional things you guys can try to do:
 - Screen resizing based on parameters
 - option to work with radians or degrees
 - AST visualizer
@@ -36,7 +36,7 @@ Additional things you guys can try to do:
 - Alternate axes scaling
 - translucency (this will need quite a bit of math so you guys will have to figure that out)
 
-Also i've got a few things imma be working on: 
+Also i've got a few things imma be working on:
 - inputting constants
 - the sigma function
 - inputting other equations inside an equation

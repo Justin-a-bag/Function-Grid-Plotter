@@ -6,7 +6,7 @@ import sys
 from Equation import Equation
 from Color import Color
 from Boundary import Boundary
-from DataEntryField import DataEntryField
+from Entryfield import DataEntryField
 
 # Define screen and drawing boundaries
 WIDTH, HEIGHT = 1100, 800
@@ -60,7 +60,9 @@ functionsList = [
 ]
 
 functionsDict = {}
-colorsList = [("my_color", "r", "g", "b")]
+colorsList = [("my_color", "r", "g", "b"), ("rgb", "255((x-(cos(3.7(x+0.8))/3))/2.8+1.28)",
+                                            "255(sin(1.5(x+pi/2))/2.8+0.5)",
+                                            "255(e^(-(3(x+0.99))^2)/3-x/9+0.1)")]
 colorsDict = {}
 restrictionsList = [("rest", "rest", False)]
 restrictionsDict = {}
@@ -69,6 +71,9 @@ drawFinal = []
 
 # Maps list index -> ((R, G, B), "Error Message")
 error_states = {}
+color_error_states = {}
+restriction_error_states = {}
+draw_error_states = {}
 settings_error_states = {}
 
 pygame.init()
@@ -88,7 +93,7 @@ def calculate_draw_bounds(xrange:float,yrange:float):
     available_h = max(1, HEIGHT)
 
     # grid size horizontally
-    grid_size_x = min(available_w, available_h*xrange/yrange)
+    grid_size_x = min(available_w, int(available_h*xrange/yrange))
     grid_size_y = min(available_w*yrange/xrange, available_h)
 
     # Center the square in the available space
@@ -233,8 +238,12 @@ class ColorsEntryField(DataEntryField):
         super().__init__(index, list_ref)
 
         # three data_str (including data_str) values for r, g, and b values
-        self.data_str_g = list_ref[2]
-        self.data_str_b = list_ref[2]
+        if index < len(list_ref):
+            self.data_str_g = list_ref[index][2]
+            self.data_str_b = list_ref[index][3]
+        else:
+            self.data_str_g = ""
+            self.data_str_b = ""
 
         # three backups including backup_str
         self.backup_data_g = self.data_str_g
@@ -271,7 +280,6 @@ class ColorsEntryField(DataEntryField):
         # 1. Error Flagging
         # Fetch the color from our global error_states dict based on this field's index.
         # Defaults to Grey if not found.
-        #TODO: blue flagging if a function is too large
         flag_color = error_states.get(self.index, ((150, 150, 150), ""))[0]
         pygame.draw.circle(surface, flag_color, (15, self.y + 25), 6)
 
@@ -290,13 +298,18 @@ class ColorsEntryField(DataEntryField):
 
         # ast_to_string logic: if NOT editing, show the formatted AST string
         display_str = self.data_str
+        display_str2 = self.data_str_g
+        display_str3 = self.data_str_b
+
         if not is_active and self.id_str in functionsDict:
             try:
-                display_str = functionsDict[self.id_str].ast_to_string()
+                display_str = colorsDict[self.id_str].ast_to_string()
             except AttributeError:
                 pass
 
         data_surf = font.render(display_str, True, TEXT_COLOR)
+        data_surf2 = font.render(display_str2, True, TEXT_COLOR)
+        data_surf3 = font.render(display_str3, True, TEXT_COLOR)
 
         # Scroll through text entry field natively via subsurface clipping
         # Added horizantal scrolling(left and right key)
@@ -307,14 +320,14 @@ class ColorsEntryField(DataEntryField):
 
         # scroll for rectangle 2 (g)
         clip_area = pygame.Rect(self.scroll_x, 0, self.data_rect2.width - 5, self.data_rect2.height)
-        surface.blit(data_surf, (self.data_rect2.x + 5, self.data_rect2.y + 7), clip_area)
-        max_scroll = max(0, data_surf.get_width() - (self.data_rect2.width - 5))
+        surface.blit(data_surf2, (self.data_rect2.x + 5, self.data_rect2.y + 7), clip_area)
+        max_scroll = max(0, data_surf2.get_width() - (self.data_rect2.width - 5))
         self.scroll_x = max(0, min(self.scroll_x, max_scroll))
 
         # scroll for rectangle 3 (b)
         clip_area = pygame.Rect(self.scroll_x, 0, self.data_rect3.width - 5, self.data_rect3.height)
-        surface.blit(data_surf, (self.data_rect3.x + 5, self.data_rect3.y + 7), clip_area)
-        max_scroll = max(0, data_surf.get_width() - (self.data_rect3.width - 5))
+        surface.blit(data_surf3, (self.data_rect3.x + 5, self.data_rect3.y + 7), clip_area)
+        max_scroll = max(0, data_surf3.get_width() - (self.data_rect3.width - 5))
         self.scroll_x = max(0, min(self.scroll_x, max_scroll))
 
         # 4. Draw Confirm "Enter" Button
@@ -407,10 +420,14 @@ class ColorsEntryField(DataEntryField):
 
 def update_functions() -> None:
     """Rebuilds all dictionaries and runs error checking validation."""
-    global functionsDict, colorsDict, restrictionsDict, drawFinal, error_states
+    global functionsDict, colorsDict, restrictionsDict, drawFinal, error_states, color_error_states,\
+        restriction_error_states, draw_error_states
 
     functionsDict.clear()
     error_states.clear()
+    color_error_states.clear()
+    restriction_error_states.clear()
+    draw_error_states.clear()
     seen_ids = set()
 
     # --- 1. BUILD FUNCTIONS AND CHECK ERRORS ---
@@ -425,7 +442,7 @@ def update_functions() -> None:
         if ';' in u_id:
             error_states[i] = ((200, 50, 50),
                                "Variable names cannot contain ';'. Use ';' only when referencing them in equations.")
-            continue  # Fucking Kill the ID
+            continue  # Kill the ID
 
         # Rule 2: Duplicate Check
         if u_id in seen_ids:
@@ -448,10 +465,46 @@ def update_functions() -> None:
 
     # --- 2. BUILD SECONDARY DICTS ---
     colorsDict.clear()
-    for x in colorsList:
-        if x[0] not in colorsDict:
-            if all(x[c] in functionsDict for c in [1, 2, 3]):
-                colorsDict[x[0]] = Color(functionsDict[x[1]], functionsDict[x[2]], functionsDict[x[3]])
+    for i, item in enumerate(colorsList):
+        u_id, u_r, u_g, u_b = item[0], item[1], item[2], item[3]
+
+        if not u_id:
+            color_error_states[i] = ((150, 150, 150), "")  # Grey (Empty)
+            continue
+
+        # Rule 1: NO Tildes in the declaration box!
+        if ';' in u_id:
+            color_error_states[i] = ((200, 50, 50),
+                                     "Variable names cannot contain ';'. " +
+                                     "Use ';' only when referencing them in equations.")
+            continue  # Kill the ID
+
+        # Rule 2: Duplicate Check
+        if u_id in seen_ids:
+            color_error_states[i] = ((200, 200, 50), "Duplicate ID: Using the first declared value.")
+            continue  # Skip adding to dict
+
+        seen_ids.add(u_id)
+
+        # Rule 3: Compile the math and check tree integrity
+        r = Equation(u_r)
+        g = Equation(u_g)
+        b = Equation(u_b)
+
+        eq = Color(r, g, b)
+        colorsDict[u_id] = eq
+
+        # Check for Math Errors vs Size Warnings
+        if (r.tree.op == 'invalid' or r.tree.op == 'potato' or g.tree.op == 'invalid' or g.tree.op == 'potato' or
+                b.tree.op == 'invalid' or b.tree.op == 'potato'):
+            color_error_states[i] = ((200, 50, 50), "Math Error: Invalid syntax or missing arguments.")
+        elif (r.size(colorsDict, MAX_DEPTH) > 100 or g.size(colorsDict, MAX_DEPTH) > 100 or
+              b.size(colorsDict, MAX_DEPTH) > 100):
+            color_error_states[i] = ((50, 100, 200), "Warning: Large function tree. May impact performance.")
+        else:
+            color_error_states[i] = ((50, 200, 50), "Valid")  # Green
+
+
 
     restrictionsDict.clear()
     for x in restrictionsList:
@@ -787,7 +840,6 @@ def apply_settings_from_text() -> None:
         calculate_draw_bounds(X_MATH_MAX - X_MATH_MIN, Y_MATH_MAX - Y_MATH_MIN)
         rerender_graph_surface(x_coords, y_coords)
 
-
     except ValueError:
         update_settings_error_states()
 
@@ -832,8 +884,9 @@ def handle_settings_keydown(event) -> None:
         return
 
     if event.key == pygame.K_BACKSPACE:
-        settings_values[active_settings_field] = settings_values[active_settings_field][:-1]
-        update_settings_error_states()
+        if active_settings_field is not None:
+            settings_values[active_settings_field] = settings_values[active_settings_field][:-1]
+            update_settings_error_states()
         return
 
     allowed_chars = "0123456789.-"
@@ -976,10 +1029,8 @@ if __name__ == "__main__":
         AST_SELECTED_ID = functionsList[0][0]
     rerender_graph_surface(x_coords, y_coords)
 
-
     function_ui_fields = [FunctionsEntryField(i, functionsList) for i in range(len(functionsList) + 1)]
-
-    colors_ui_fields = [DataEntryField(i, colorsList) for i in range(len(colorsList) + 1)]
+    colors_ui_fields = [ColorsEntryField(i, colorsList) for i in range(len(colorsList) + 1)]
 
     rest_ui_fields = [DataEntryField(i, restrictionsList) for i in range(len(colorsList) + 1)]
     draw_ui_fields = [DataEntryField(i, drawList) for i in range(len(colorsList) + 1)]
@@ -1113,13 +1164,18 @@ if __name__ == "__main__":
             # pygame.draw.rect(screen, (0, 0, 0), toggle_ast_button, 2)
             # label = font.render("Toggle AST", True, (0, 0, 0))
             # screen.blit(label, (195, 7))
+
+        elif current_panel == 'Colors':
+            for field in colors_ui_fields:
+                field.draw(screen)
+
+        # elif current_panel == 'Restrictions':
+
         elif current_panel == 'Settings':
             render_settings_overlay(screen, font)
 
         # 2. DRAW UI TABS AND ACTIVE PANEL BACKGROUND
         render_tab_labels(screen, font)
-
-        render_ast_overlay(screen, font)
 
         pygame.display.flip()
 
