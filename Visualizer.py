@@ -489,11 +489,6 @@ class ColorsEntryField(FunctionsEntryField):
         return False
 
     def handle_keydown(self, event) -> None:
-        # TODO: improve quality of life (holding backspace & arrow keys)
-
-
-
-        #TODO: editing inside of the line instead of strictly at the end
         if self.editing_id:
             cursor_pos_id = self.cursors.get("id", len(self.id_str))
             if event.key == pygame.K_BACKSPACE:
@@ -1082,7 +1077,6 @@ def update_functions() -> None:
 
 
 def render_grid(surface: pygame.Surface, xpoints: list[float], ypoints: list[float]):
-    # TODO: fix the new white lines appearing bug (Lingnan)
     surface.fill((255, 255, 255))
     cell_w = (DRAW_MAX_X - DRAW_MIN_X) / len(xpoints)
     cell_h = (DRAW_MAX_Y - DRAW_MIN_Y) / len(ypoints)
@@ -1339,11 +1333,9 @@ def import_from_string(raw_text: str) -> bool:
     except ValueError as exc:
         settings_transfer_status = f"Import failed: {exc}"
         return False
-# TODO: the UI for the other 3 tabs (Justin)
 # (should probably use something similar to render_tab_labels and draw_button for this?)
 
 # if you need to render a screen make the functions for that screen here
-# TODO: update and rework settings overlay (Lingnan)
 def render_settings_overlay(screen: pygame.Surface, font: pygame.font.Font) -> None:
     """
     Draw the Settings tab UI inside the fixed left sidebar.
@@ -1958,7 +1950,6 @@ if __name__ == "__main__":
                 rerender_graph_surface(x_coords, y_coords)
 
             if event.type == pygame.MOUSEBUTTONDOWN:
-                # TODO (optional): resizing side menu
                 mouse_pos = pygame.mouse.get_pos()
 
                 for i in range(5):
@@ -1976,7 +1967,6 @@ if __name__ == "__main__":
                     clicked_any_field = False
 
                     for field in function_ui_fields:
-                        # TODO: allow users to move around entry fields (applies for all 4 tabs) and when one gets deleted, it removes that text thing and shifts the others (M)
                         if field.rect.collidepoint(mouse_pos):
                             clicked_any_field = True
                             needs_redraw = field.handle_click(mouse_pos)
@@ -1997,7 +1987,6 @@ if __name__ == "__main__":
                     if not clicked_any_field:
                         for field in function_ui_fields: field.cancel()
 
-                # TODO: the other 3 panels (Justin)
                 if current_panel == 'Colors':
                     if event.button == 4:       # scroll up
                         scroll_y_vals[1] -= 5
@@ -2196,6 +2185,5 @@ if __name__ == "__main__":
         render_tab_labels(screen, font)
 
         pygame.display.flip()
-
     pygame.quit()
     sys.exit()
