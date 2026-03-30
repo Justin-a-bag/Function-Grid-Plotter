@@ -65,7 +65,7 @@ functionsList = [
 ]
 
 functionsDict = {}
-colorsList = [("rgb", "r","g","b")]
+colorsList = [("rgb", "r", "g", "b")]
 colorsDict = {}
 restrictionsList = [("rest", "rest", False)]
 restrictionsDict = {}
@@ -89,6 +89,12 @@ except pygame.error:
 pygame.key.set_repeat(500, 50)
 font = pygame.font.SysFont(None, 24)
 small_font = pygame.font.SysFont(None, 18)
+
+# flag colours
+GREY = (150, 150, 150)
+RED = (200, 50, 50)
+BLUE = (50, 100, 200)
+GREEN = (50, 200, 50)
 
 
 def calculate_draw_bounds(xrange: float, yrange: float):
@@ -1183,7 +1189,9 @@ def import_from_string(raw_text: str) -> bool:
 
 # if you need to render a screen make the functions for that screen here
 # TODO: update and rework settings overlay (Lingnan)
-def render_settings_overlay(screen: pygame.Surface, font: pygame.font.Font) -> None:
+
+
+def render_settings_overlay(screen: pygame.Surface) -> None:
     """
     Draw the Settings tab UI inside the fixed left sidebar.
 
@@ -1354,7 +1362,7 @@ def render_settings_overlay(screen: pygame.Surface, font: pygame.font.Font) -> N
                             enter_h)
 
         return y + 48
-    
+
     current_y = TABS_HEIGHT + 14
     current_y = draw_axis_section(current_y, "X", "x")
     current_y = draw_axis_section(current_y, "Y", "y")
@@ -1395,7 +1403,8 @@ def render_settings_overlay(screen: pygame.Surface, font: pygame.font.Font) -> N
         transfer_rect.width - 10,
         16
     )
-    screen.blit(preview_surface, (transfer_rect.x + 5, transfer_rect.y + 4), area=pygame.Rect(0, 0, preview_clip.width, preview_clip.height))
+    screen.blit(preview_surface, (transfer_rect.x + 5, transfer_rect.y + 4),
+                area=pygame.Rect(0, 0, preview_clip.width, preview_clip.height))
 
     # Helper text
     screen.blit(
@@ -1508,7 +1517,6 @@ def apply_settings_from_text() -> None:
         calculate_draw_bounds(X_MATH_MAX - X_MATH_MIN, Y_MATH_MAX - Y_MATH_MIN)
         rerender_graph_surface(x_coords, y_coords)
 
-
     except ValueError:
         update_settings_error_states()
 
@@ -1520,10 +1528,10 @@ def handle_settings_textbox_click(mouse_pos) -> None:
     global active_settings_field
 
     textbox_keys = [
-    "x_min", "x_points", "x_max",
-    "y_min", "y_points", "y_max",
-    "max_recursion", "transfer_text"
-    ]
+        "x_min", "x_points", "x_max",
+        "y_min", "y_points", "y_max",
+        "max_recursion", "transfer_text"
+        ]
 
     active_settings_field = None
     for key in textbox_keys:
@@ -1581,7 +1589,7 @@ def handle_settings_keydown(event) -> None:
         active_settings_field = None
         update_settings_error_states()
         return
-    
+
     if event.key == pygame.K_ESCAPE:
         active_settings_field = None
         update_settings_error_states()
@@ -1597,10 +1605,10 @@ def handle_settings_keydown(event) -> None:
         settings_values[active_settings_field] += event.unicode
         update_settings_error_states()
 
+
 def update_settings_error_states() -> None:
     """
     Rebuild the color state for settings fields.
-
 
     Meanings:
     - Red: invalid
@@ -1608,7 +1616,7 @@ def update_settings_error_states() -> None:
     - Green: normal valid
     - Grey: blank / can't evaluate yet
     """
-    global settings_error_states
+    global settings_error_states, GREY, RED, BLUE, GREEN
     settings_error_states = {}
 
     GREY = (150, 150, 150)
@@ -1693,6 +1701,7 @@ def update_settings_error_states() -> None:
 
 
 def apply_screen_size_from_index(index: int, xrange: float, yrange: float) -> None:
+    """ takes in an index and based off of that, it calls the funtion calculate_draw_bounds with new screen bounds"""
     global SCREEN_SIZE_INDEX, WIDTH, HEIGHT
     SCREEN_SIZE_INDEX = index % len(SCREEN_SIZE_OPTIONS)
     WIDTH, HEIGHT = SCREEN_SIZE_OPTIONS[SCREEN_SIZE_INDEX]
@@ -1739,7 +1748,7 @@ if __name__ == "__main__":
     while running:
         # 1. ALWAYS BLIT THE CACHED MATH GRID FIRST
         if GRAPH_SURFACE is not None:
-            screen.blit(GRAPH_SURFACE, (0, 0))
+            screen.blit(GRAPH_SURFACE, (0, 0))  # graph surface is always going to be none because of the if statement
 
         pygame.draw.rect(screen, (220, 220, 220), (0, TABS_HEIGHT, TEXTBOX_WIDTH, HEIGHT))
         # 3. HANDLE EVENTS
@@ -1783,7 +1792,8 @@ if __name__ == "__main__":
                                 print("Recalculating Math...")
 
                                 rerender_graph_surface(x_coords, y_coords)
-                                function_ui_fields = [FunctionsEntryField(i, functionsList) for i in range(len(functionsList) + 1)]
+                                function_ui_fields = [FunctionsEntryField(i, functionsList)
+                                                      for i in range(len(functionsList) + 1)]
 
                         else:
                             # If they clicked another field, cancel the edit on this one
@@ -1792,9 +1802,10 @@ if __name__ == "__main__":
 
                     # If they clicked entirely outside the UI sidebar, cancel everything
                     if not clicked_any_field:
-                        for field in function_ui_fields: field.cancel()
+                        for field in function_ui_fields:
+                            field.cancel()
 
-                # TODO: the other 3 panels (Justin)
+                # colors mouse inputs,
                 if current_panel == 'Colors':
                     if event.button == 4:       # scroll up
                         scroll_y_vals[1] -= 5
@@ -1813,7 +1824,8 @@ if __name__ == "__main__":
                             if field.editing_id or field.editing_data:
                                 field.cancel()
                     if not clicked_any_field:
-                        for field in colors_ui_fields: field.cancel()
+                        for field in colors_ui_fields:
+                            field.cancel()
 
                 if current_panel == 'Restrictions':
                     if event.button == 4:       # scroll up
@@ -1857,7 +1869,8 @@ if __name__ == "__main__":
                             if field.editing_id or getattr(field, 'editing_data', False):
                                 field.cancel()
                     if not clicked_any_field:
-                        for field in draw_ui_fields: field.cancel()
+                        for field in draw_ui_fields:
+                            field.cancel()
 
                 if current_panel == 'Settings':
 
@@ -1879,7 +1892,8 @@ if __name__ == "__main__":
                         continue
 
                     # Paste clipboard into the transfer box
-                    if settings_buttons.get("paste_clipboard") and settings_buttons["paste_clipboard"].collidepoint(mouse_pos):
+                    if (settings_buttons.get("paste_clipboard") and
+                            settings_buttons["paste_clipboard"].collidepoint(mouse_pos)):
                         try:
                             clip_text = pygame.scrap.get(pygame.SCRAP_TEXT)
                             if clip_text is None:
@@ -1896,9 +1910,12 @@ if __name__ == "__main__":
                     if settings_buttons.get("import_text") and settings_buttons["import_text"].collidepoint(mouse_pos):
                         if import_from_string(settings_transfer_text):
                             # Rebuild UI rows so the imported data shows up immediately
-                            function_ui_fields = [FunctionsEntryField(i, functionsList) for i in range(len(functionsList) + 1)]
+                            function_ui_fields = [FunctionsEntryField(i, functionsList)
+                                                  for i in range(len(functionsList) + 1)]
                             colors_ui_fields = [ColorsEntryField(i, colorsList) for i in range(len(colorsList) + 1)]
-                            rest_ui_fields = [RestrictionsEntryField(i, restrictionsList) for i in range(len(restrictionsList) + 1)]
+
+                            rest_ui_fields = [RestrictionsEntryField(i, restrictionsList)
+                                              for i in range(len(restrictionsList) + 1)]
                             draw_ui_fields = [DrawEntryField(i, drawList) for i in range(len(drawList) + 1)]
 
                             screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
@@ -1964,10 +1981,6 @@ if __name__ == "__main__":
         if current_panel == 'Functions':
             for field in function_ui_fields:
                 field.draw(screen)
-            # pygame.draw.rect(screen, (225, 225, 225), toggle_ast_button)
-            # pygame.draw.rect(screen, (0, 0, 0), toggle_ast_button, 2)
-            # label = font.render("Toggle AST", True, (0, 0, 0))
-            # screen.blit(label, (195, 7))
 
         elif current_panel == 'Colors':
             for field in colors_ui_fields:
@@ -1982,7 +1995,7 @@ if __name__ == "__main__":
                 field.draw(screen)
 
         elif current_panel == 'Settings':
-            render_settings_overlay(screen, font)
+            render_settings_overlay(screen)
 
         # 2. DRAW UI TABS AND ACTIVE PANEL BACKGROUND
         render_tab_labels(screen, font)
