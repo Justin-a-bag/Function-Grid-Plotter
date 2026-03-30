@@ -64,20 +64,14 @@ scroll_y_vals = [0, 0, 0, 0]
 # Note: IDs here do NOT contain the semicolon.
 # Semicolons are only used inside the math strings (e.g., "sin(;eq)")
 functionsList = [
-    ("eq",
-     "arctan(2sin(-2x-y/8+cos(3y-x-sin(cos(sin(sin(x*y)+x))+x-y+arccot(x)*arctan(y))))+frac{(x^{2}+\frac{y^{2}}{14})}{3}-(\frac{100}{x^{2}+y^{2}})+e^{-4-y})"),
-    ("r", "255((x-(cos(3.7(x+0.8))/3))/2.8+1.28)"),
-    ("g", "255(sin(1.5(x+pi/2))/2.8+0.5)"),
-    ("b", "255(e^(-(3(x+0.99))^2)/3-x/9+0.1)"),
-    ("rest", "1")
 ]
 
 functionsDict = {}
-colorsList = [("rgb", "r", "g", "b")]
+colorsList = []
 colorsDict = {}
-restrictionsList = [("rest", "rest", False)]
+restrictionsList = []
 restrictionsDict = {}
-drawList = [("eq", "rgb", "rest")]
+drawList = []
 drawFinal = []
 
 # Maps list index -> ((R, G, B), "Error Message")
@@ -1240,6 +1234,7 @@ def __sanitize_input(text: str) -> str:
     text = text.replace('\\', '')
     return text
 
+
 def import_from_string(raw_text: str) -> bool:
     """
     Read the import/export text and rebuild the lists/settings from it.
@@ -1735,7 +1730,7 @@ def handle_settings_textbox_click(mouse_pos) -> None:
     for key in textbox_keys:
         if key in settings_buttons and settings_buttons[key].collidepoint(mouse_pos):
             active_settings_field = key
-            if key in settings_values: # exclude transfer text
+            if key in settings_values:  # exclude transfer text
                 value = settings_values.get(key, "")
                 scroll = settings_scrolls.get(key, 0)
                 rect = settings_buttons[key]
@@ -2101,12 +2096,14 @@ if __name__ == "__main__":
                                 settings_transfer_text = __sanitize_input(clip_text)
 
                     # Import from the current transfer text
-                            if settings_buttons.get("import_text") and settings_buttons["import_text"].collidepoint(mouse_pos):
+                            if (settings_buttons.get("import_text") and
+                                    settings_buttons["import_text"].collidepoint(mouse_pos)):
                                 if import_from_string(settings_transfer_text):
                                     # Rebuild UI rows so the imported data shows up immediately
                                     function_ui_fields = [FunctionsEntryField(i, functionsList)
                                                           for i in range(len(functionsList) + 1)]
-                                    colors_ui_fields = [ColorsEntryField(i, colorsList) for i in range(len(colorsList) + 1)]
+                                    colors_ui_fields = [ColorsEntryField(i, colorsList)
+                                                        for i in range(len(colorsList) + 1)]
 
                                     rest_ui_fields = [RestrictionsEntryField(i, restrictionsList)
                                                       for i in range(len(restrictionsList) + 1)]
