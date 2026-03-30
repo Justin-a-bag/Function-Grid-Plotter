@@ -11,11 +11,8 @@ import math
 
 class Equation:
     """
-         represents one equation f(x,y) = z
-         contains one tree
-         evaluate(self,x:float, y:float)->float:
-         only returns value for a single point
-         as_string(self)->string:
+    Represents a mathematical equation `f(x, y) = z`.
+    Contains a syntax tree generated from a mathematical string expression.
     """
 
     tree: Node
@@ -23,8 +20,7 @@ class Equation:
     def tokenize(self, eq: str) -> list:
         """
         Reads the equation string from left to right, grouping characters
-        into 'tokens' based on their type.
-        this allows us to then turn these individual tokens into the tree.
+        into tokens based on their type (numbers, operators, functions, variables).
         """
 
         tokens = []
@@ -120,17 +116,13 @@ class Equation:
         return final_tokens
 
     def __init__(self, infix_string: str):
-        # guys guys femtanyl reference
         tokenized_input = self.tokenize(infix_string)
 
         # 1. Tokenize -> 2. Shunting-Yard -> 3. Stack-based Build
 
         """
-        Hi guys if you're reading this that means you're working on the project
-        yeah uh this is the thing that takes in input and allows you to do stuff with it i guess
-        Precedence is all the stuff that involves bedmas and also input requirements
-        replaceable is meant moreso for alternative ways of writing the same function multiple times
-        for instance, in desmos copying '*' becomes '\cdot'
+        Precedence dictates operation order (BEDMAS).
+        Replaceable represents alternative LaTeX formats mapping to standard operators.
         """
         PRECEDENCE = {
             '+': (1, 2), '-': (1, 2),
@@ -157,15 +149,6 @@ class Equation:
         output_stack = []  # This stores our completed Tree Nodes
         operator_stack = []  # This stores operators that are waiting for their children
 
-        """
-        For instance, 2x+y-3y/x^2 becomes 2*x+y-3*y/x^2
-        this then gets turned into 2 x * y + 3 - y * x 2 ^ /
-        which then gets squeeshed in the right way into (((((2 x *) y +) 3 -) y *) (x 2 ^) /)
-        and that's what the tree looks like basically
-        """
-
-        # putting the def inside init because i want it to see the variables and stuff
-        # i am describing everything like i'm an israeli soldier in Gaza
         def apply_operator():
             """Pops an operator and its required children to create a sub-tree."""
             nonlocal potato
@@ -259,11 +242,12 @@ class Equation:
         # The very last item on the output stack is the Root of our tree!
         self.tree = output_stack[0]
 
-    def evaluate(self, x: float, y: float, angle_mode = "potato",env:dict = None, depth = 50) -> float:
-        # this is the tree traversal step; the entire thing should return a float
-        # evaluate the trees on the upper levels then evaluate this bottom node you get the point
-        # eliminates possibility of returning a complex value
-        if depth<0:
+    def evaluate(self, x: float, y: float, angle_mode="radians", env: dict = None, depth=50) -> float:
+        """
+        Evaluates the equation syntax tree for a specific (x, y) coordinate.
+        Returns the computed float, or 'nan' on complex or invalid paths.
+        """
+        if depth < 0:
             return (x**2+y**2)**0.5
 
         if env is None:
@@ -281,13 +265,14 @@ class Equation:
             return (x**2+y**2)**0.5
 
 
-    # returns size of the tree (number of nodes)
-    def size(self, env: dict = None, depth = 50) -> int:
+    def size(self, env: dict = None, depth=50) -> int:
+        """Returns the total number of nodes in this equation's evaluation tree."""
         if env is None:
             env = {}
         return self.tree.size(env, depth)
 
     def ast_to_string(self) -> str:
+        """Returns a string representation of the parsed AST."""
         return self.tree.ast_to_string()
 
 

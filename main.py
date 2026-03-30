@@ -84,11 +84,7 @@ draw_error_states = {}
 settings_error_states = {}
 
 pygame.init()
-# Lets pygame use the system clipboard for copy/paste
-try:
-    pygame.scrap.init()
-except pygame.error:
-    pass
+
 
 pygame.key.set_repeat(500, 50)
 font = pygame.font.SysFont(None, 24)
@@ -99,6 +95,7 @@ GREY = (150, 150, 150)
 RED = (200, 50, 50)
 BLUE = (50, 100, 200)
 GREEN = (50, 200, 50)
+YELLOW = (200, 200, 50)
 
 
 def calculate_draw_bounds(xrange: float, yrange: float):
@@ -1045,18 +1042,18 @@ def update_functions() -> None:
         u_id, u_str = item[0], item[1]
 
         if not u_id:
-            error_states[i] = ((150, 150, 150), "")  # Grey (Empty)
+            error_states[i] = (GREY, "")  # Grey (Empty)
             continue
 
         # Rule 1: NO Tildes in the declaration box!
         if ';' in u_id:
-            error_states[i] = ((200, 50, 50),
+            error_states[i] = (RED,
                                "Variable names cannot contain ';'. Use ';' only when referencing them in equations.")
             continue  # Kill the ID
 
         # Rule 2: Duplicate Check
         if u_id in seen_ids:
-            error_states[i] = ((200, 200, 50), "Duplicate ID: Using the first declared value.")
+            error_states[i] = (YELLOW, "Duplicate ID: Using the first declared value.")
             continue  # Skip adding to dict
 
         seen_ids.add(u_id)
@@ -1067,18 +1064,18 @@ def update_functions() -> None:
 
         # Check for Math Errors vs Size Warnings
         if eq.tree.op == 'invalid' or eq.tree.op == 'potato':
-            error_states[i] = ((200, 50, 50), "Math Error: Invalid syntax or missing arguments.")
+            error_states[i] = (RED, "Math Error: Invalid syntax or missing arguments.")
         elif eq.size(functionsDict, MAX_DEPTH) > 100:
-            error_states[i] = ((50, 100, 200), "Warning: Large function tree. May impact performance.")
+            error_states[i] = (BLUE, "Warning: Large function tree. May impact performance.")
         else:
-            error_states[i] = ((50, 200, 50), "Valid")  # Green
+            error_states[i] = (GREEN, "Valid")
 
     # --- 2. BUILD SECONDARY DICTS ---
     colorsDict.clear()
     for i, item in enumerate(colorsList):
 
         if not item[0]:
-            color_error_states[i] = ((150, 150, 150), "")  # Grey (Empty)
+            color_error_states[i] = (GREY, "")  # Grey (Empty)
             continue
 
         # Rule 1: NO Tildes in the declaration box!
@@ -1088,37 +1085,37 @@ def update_functions() -> None:
                 color_errs.append("Function ID not found")
                 continue
         if item[0] in colorsDict:
-            color_error_states[i] = ((200, 200, 50), "Duplicate ID")
+            color_error_states[i] = (YELLOW, "Duplicate ID")
             continue
 
         if len(color_errs) > 0:
-            color_error_states[i] = ((200, 50, 50), ", ".join(color_errs))
+            color_error_states[i] = (RED, ", ".join(color_errs))
         else:
             c_r = Equation("x") if item[1].strip() == "" else functionsDict[item[1]]
             c_g = Equation("x") if item[2].strip() == "" else functionsDict[item[2]]
             c_b = Equation("x") if item[3].strip() == "" else functionsDict[item[3]]
             colorsDict[item[0]] = Color(c_r, c_g, c_b)
-            color_error_states[i] = ((50, 200, 50), "Valid")
+            color_error_states[i] = (GREEN, "Valid")
 
     restrictionsDict.clear()
     for i, x in enumerate(restrictionsList):
         if not x[0]:
-            restriction_error_states[i] = ((150, 150, 150), "")
+            restriction_error_states[i] = (GREY, "")
             continue
         if x[0] in restrictionsDict:
-            restriction_error_states[i] = ((200, 200, 50), "Duplicate ID")
+            restriction_error_states[i] = (YELLOW, "Duplicate ID")
             continue
         if x[1].strip() != "" and x[1] not in functionsDict:
-            restriction_error_states[i] = ((200, 50, 50), "Function ID not found")
+            restriction_error_states[i] = (RED, "Function ID not found")
         else:
             func_val = Equation("1") if x[1].strip() == "" else functionsDict[x[1]]
             restrictionsDict[x[0]] = Boundary(func_val, x[2])
-            restriction_error_states[i] = ((50, 200, 50), "Valid")
+            restriction_error_states[i] = (GREEN, "Valid")
 
     drawFinal.clear()
     for i, x in enumerate(drawList):
         if not x[0]:
-            draw_error_states[i] = ((150, 150, 150), "")
+            draw_error_states[i] = (GREY, "")
             continue
 
         errs = []
@@ -1130,12 +1127,12 @@ def update_functions() -> None:
             errs.append("Restriction ID not found")
 
         if len(errs) > 0:
-            draw_error_states[i] = ((200, 50, 50), ", ".join(errs))
+            draw_error_states[i] = (RED, ", ".join(errs))
         else:
             c_val = Color(Equation("x"), Equation("x"), Equation("x")) if x[1].strip() == "" else colorsDict[x[1]]
             r_val = Boundary(Equation("1"), False) if x[2].strip() == "" else restrictionsDict[x[2]]
             drawFinal.append((functionsDict[x[0]], c_val, r_val))
-            draw_error_states[i] = ((50, 200, 50), "Valid")
+            draw_error_states[i] = (GREEN, "Valid")
 
 
 def render_grid(surface: pygame.Surface, xpoints: list[float], ypoints: list[float]):
@@ -1868,13 +1865,8 @@ def update_settings_error_states() -> None:
     - Green: normal valid
     - Grey: blank / can't evaluate yet
     """
-    global settings_error_states, GREY, RED, BLUE, GREEN
+    global settings_error_states
     settings_error_states = {}
-
-    GREY = (150, 150, 150)
-    RED = (200, 50, 50)
-    BLUE = (50, 100, 200)
-    GREEN = (50, 200, 50)
 
     keys = ["x_min", "x_points", "x_max", "y_min", "y_points", "y_max", "max_recursion"]
 
