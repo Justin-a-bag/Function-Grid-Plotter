@@ -1217,6 +1217,23 @@ def _split_first(text: str, delimiter: str) -> tuple[str, str]:
     return parts[0], parts[1]
 
 
+def __sanitize_input(text: str) -> str:
+    # First protect expected user newlines from Windows clipboards (CRLF)
+    text = text.replace('\r\n', '\n')
+
+    escapes = {
+        '\a': 'a',
+        '\b': 'b',
+        '\f': 'f',
+        '\r': 'r',
+        '\t': 't',
+        '\v': 'v'
+    }
+    for esc, repl in escapes.items():
+        text = text.replace(esc, repl)
+    text = text.replace('\\', '')
+    return text
+
 def import_from_string(raw_text: str) -> bool:
     """
     Read the import/export text and rebuild the lists/settings from it.
@@ -2077,7 +2094,7 @@ if __name__ == "__main__":
                             if not clip_text:
                                 settings_transfer_status = "Clipboard is empty."
                             else:
-                                settings_transfer_text = clip_text
+                                settings_transfer_text = __sanitize_input(clip_text)
 
                     # Import from the current transfer text
                     if settings_buttons.get("import_text") and settings_buttons["import_text"].collidepoint(mouse_pos):
@@ -2125,6 +2142,11 @@ if __name__ == "__main__":
                 allowed_keys = [pygame.K_BACKSPACE, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_RETURN]
                 if event.key not in allowed_keys and (event.unicode == ""):
                     continue
+                if hasattr(event, 'unicode'):
+                    try:
+                        event.unicode = __sanitize_input(event.unicode)
+                    except AttributeError:
+                        pass
 
                 if current_panel == 'Functions':
                     for field in function_ui_fields:
