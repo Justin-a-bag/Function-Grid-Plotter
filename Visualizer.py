@@ -123,7 +123,7 @@ def calculate_draw_bounds(xrange: float, yrange: float):
 
 class FunctionsEntryField(DataEntryField):
     """
-    Replaces the Textbox. Acts as a State Machine for each list item.
+    Acts as a State Machine for each list item in the Functions Tab.
     """
 
     def __init__(self, index: int, list_ref: list):
@@ -135,6 +135,10 @@ class FunctionsEntryField(DataEntryField):
         self.btn_enter = pygame.Rect(240, self.y + 10, 50, 30)
 
     def draw(self, surface: pygame.Surface) -> None:
+        """
+            Draws all textboxes/rectangle hitboxes in the Functions tab
+            Draws the cooresponding text and text input line
+        """
         # Draw background
         is_active = self.editing_id or self.editing_data
         bg_color = INDENT_COLOR if is_active else TEXTBOX_COLOR
@@ -192,12 +196,14 @@ class FunctionsEntryField(DataEntryField):
             surface.blit(btn_txt, (self.btn_enter.x + 5, self.btn_enter.y + 10))
 
         if self.editing_id:
-            cursor_x = self.id_rect.x + 5 + font.size(self.id_str[:self.cursors.get("id", len(self.id_str))])[0] - self.scrolls.get("id", 0)
+            cursor_x = (self.id_rect.x + 5 + font.size(self.id_str[:self.cursors.get("id", len(self.id_str))])[0] -
+                        self.scrolls.get("id", 0))
             cursor_y = self.id_rect.y + 5
             pygame.draw.line(surface, (0, 0, 0), (cursor_x, cursor_y), (cursor_x, cursor_y + 20), 2)
 
         if self.editing_data:
-            cursor_x = self.data_rect.x + 5 + font.size(self.data_str[:self.cursors.get("data", len(self.data_str))])[0] - self.scrolls.get("data", 0)
+            cursor_x = self.data_rect.x + 5 + font.size(
+                self.data_str[:self.cursors.get("data", len(self.data_str))])[0] - self.scrolls.get("data", 0)
             cursor_y = self.data_rect.y + 5
             pygame.draw.line(surface, (0, 0, 0), (cursor_x, cursor_y), (cursor_x, cursor_y + 20), 2)
 
@@ -239,6 +245,9 @@ class FunctionsEntryField(DataEntryField):
         return False
 
     def handle_keydown(self, event):
+        """
+            handles text changes or modifications based on keyboard inputs
+        """
         if self.editing_id:
             cursor_pos_id = self.cursors.get("id", len(self.id_str))
             if event.key == pygame.K_BACKSPACE:
@@ -276,7 +285,7 @@ class FunctionsEntryField(DataEntryField):
                 self.cursors["data"] = max(0, cursor_pos_data - 1)
             elif event.key == pygame.K_RIGHT:
                 self.cursors["data"] = min(len(self.data_str), cursor_pos_data + 1)
-            else :
+            else:
                 self.data_str = (
                     self.data_str[:cursor_pos_data] +
                     event.unicode +
@@ -321,7 +330,7 @@ class FunctionsEntryField(DataEntryField):
         return True  # Signals the main loop that we need to recalculate the math grid
 
 
-class ColorsEntryField(FunctionsEntryField):
+class ColorsEntryField(DataEntryField):
     """
     Replaces the Textbox. Acts as a State Machine for each list item. Contains vital information for hitboxes in Pygame
     """
@@ -352,13 +361,17 @@ class ColorsEntryField(FunctionsEntryField):
         self.data_index = 0
 
     def draw(self, surface: pygame.Surface) -> None:
+        """
+            Draws all textboxes/rectangle hitboxes in the Colours tab
+            Draws the cooresponding text and text input line
+        """
         # Draw background
         is_active = self.editing_id or self.editing_data
         bg_color = INDENT_COLOR if is_active else TEXTBOX_COLOR
         pygame.draw.rect(surface, bg_color, self.rect)
         pygame.draw.rect(surface, (150, 150, 150), self.rect, 1)  # Border
 
-        #Added for Scrolling, not sure if it's correct
+        # Added for Scrolling, not sure if it's correct
         self.y = self.Y + scroll_y_vals[1]
         self.rect.y = self.y
         self.id_rect.y = self.y + 10
@@ -434,15 +447,19 @@ class ColorsEntryField(FunctionsEntryField):
             surface.blit(btn_txt, (self.btn_enter.x + 5, self.btn_enter.y + 10))
 
         if self.editing_id:
-            cursor_x = self.id_rect.x + 5 + font.size(self.id_str[:self.cursors.get("id", len(self.id_str))])[0] - self.scrolls.get("id", 0)
+            cursor_x = (self.id_rect.x + 5 + font.size(self.id_str[:self.cursors.get("id", len(self.id_str))])[0] -
+                        self.scrolls.get("id", 0))
             cursor_y = self.id_rect.y + 5
             pygame.draw.line(surface, (0, 0, 0), (cursor_x, cursor_y), (cursor_x, cursor_y + 20), 2)
 
         if self.editing_data:
             key = f"data{self.data_index}"
-            active_str = self.data_str if self.data_index == 0 else (self.data_str_g if self.data_index == 1 else self.data_str_b)
-            active_rect = self.data_rect1 if self.data_index == 0 else (self.data_rect2 if self.data_index == 1 else self.data_rect3)
-            cursor_x = active_rect.x + 5 + font.size(active_str[:self.cursors.get(key, len(active_str))])[0] - self.scrolls.get(key, 0)
+            active_str = self.data_str if self.data_index == 0 else (self.data_str_g if self.data_index == 1 else
+                                                                     self.data_str_b)
+            active_rect = self.data_rect1 if self.data_index == 0 else (self.data_rect2 if self.data_index == 1 else
+                                                                        self.data_rect3)
+            cursor_x = (active_rect.x + 5 + font.size(active_str[:self.cursors.get(key, len(active_str))])[0] -
+                        self.scrolls.get(key, 0))
             cursor_y = active_rect.y + 5
             pygame.draw.line(surface, (0, 0, 0), (cursor_x, cursor_y), (cursor_x, cursor_y + 20), 2)
 
@@ -494,6 +511,9 @@ class ColorsEntryField(FunctionsEntryField):
         return False
 
     def handle_keydown(self, event) -> None:
+        """
+            handles text changes or modifications based on keyboard inputs
+        """
         if self.editing_id:
             cursor_pos_id = self.cursors.get("id", len(self.id_str))
             if event.key == pygame.K_BACKSPACE:
@@ -518,7 +538,8 @@ class ColorsEntryField(FunctionsEntryField):
 
         elif self.editing_data:
             key = f"data{self.data_index}"
-            active_str = self.data_str if self.data_index == 0 else (self.data_str_g if self.data_index == 1 else self.data_str_b)
+            active_str = self.data_str if self.data_index == 0 else (self.data_str_g if self.data_index == 1 else
+                                                                     self.data_str_b)
             cursor_pos = self.cursors.get(key, len(active_str))
 
             if event.key == pygame.K_BACKSPACE:
@@ -543,7 +564,8 @@ class ColorsEntryField(FunctionsEntryField):
                     self.data_str_b = self.data_str_b[:cursor_pos] + event.unicode + self.data_str_b[cursor_pos:]
                 self.cursors[key] = cursor_pos + 1
 
-            active_str = self.data_str if self.data_index == 0 else (self.data_str_g if self.data_index == 1 else self.data_str_b)
+            active_str = self.data_str if self.data_index == 0 else (self.data_str_g if self.data_index == 1 else
+                                                                     self.data_str_b)
             cursor_pixel = font.size(active_str[:self.cursors[key]])[0]
             visible_width = 40  # 50 - 10
             scroll = self.scrolls.get(key, 0)
@@ -566,7 +588,8 @@ class ColorsEntryField(FunctionsEntryField):
         """Changes list indices and triggers dict rebuild."""
         global colorsList
         if self.index < len(colorsList):
-            if self.id_str.strip() == "" and self.data_str.strip() == "" and self.data_str_g.strip() == "" and self.data_str_b.strip() == "":
+            if (self.id_str.strip() == "" and self.data_str.strip() == "" and self.data_str_g.strip() == "" and
+                    self.data_str_b.strip() == ""):
                 colorsList.pop(self.index)
             else:
                 colorsList[self.index] = (self.id_str, self.data_str, self.data_str_g, self.data_str_b)
@@ -585,7 +608,7 @@ class ColorsEntryField(FunctionsEntryField):
         return True  # Signals the main loop that we need to recalculate the math grid
 
 
-class RestrictionsEntryField(FunctionsEntryField):
+class RestrictionsEntryField(DataEntryField):
     """
     Entry field for Restrictions tab: ID, Target ID, and Boolean toggle
     """
@@ -606,6 +629,10 @@ class RestrictionsEntryField(FunctionsEntryField):
         self.btn_enter = pygame.Rect(240, self.y + 10, 50, 30)
 
     def draw(self, surface: pygame.Surface) -> None:
+        """
+            Draws all textboxes/rectangle hitboxes in the Restrictions tab
+            Draws the cooresponding text and text input line
+        """
         is_active = self.editing_id or self.editing_data
         bg_color = INDENT_COLOR if is_active else TEXTBOX_COLOR
         pygame.draw.rect(surface, bg_color, self.rect)
@@ -655,16 +682,19 @@ class RestrictionsEntryField(FunctionsEntryField):
             surface.blit(btn_txt, (self.btn_enter.x + 5, self.btn_enter.y + 10))
 
         if self.editing_id:
-            cursor_x = self.id_rect.x + 5 + font.size(self.id_str[:self.cursors.get("id", len(self.id_str))])[0] - self.scrolls.get("id", 0)
+            cursor_x = (self.id_rect.x + 5 + font.size(self.id_str[:self.cursors.get("id", len(self.id_str))])[0] -
+                        self.scrolls.get("id", 0))
             cursor_y = self.id_rect.y + 5
             pygame.draw.line(surface, (0, 0, 0), (cursor_x, cursor_y), (cursor_x, cursor_y + 20), 2)
 
         if self.editing_data:
-            cursor_x = self.data_rect1.x + 5 + font.size(self.data_str[:self.cursors.get("data", len(self.data_str))])[0] - self.scrolls.get("data", 0)
+            cursor_x = self.data_rect1.x + 5 + font.size(
+                self.data_str[:self.cursors.get("data", len(self.data_str))])[0] - self.scrolls.get("data", 0)
             cursor_y = self.data_rect1.y + 5
             pygame.draw.line(surface, (0, 0, 0), (cursor_x, cursor_y), (cursor_x, cursor_y + 20), 2)
 
     def handle_click(self, mouse_pos) -> bool:
+        """Returns True if the 'Enter' button was clicked and confirmed."""
         if self.id_rect.collidepoint(mouse_pos):
             self.editing_id = True
             self.editing_data = False
@@ -698,6 +728,9 @@ class RestrictionsEntryField(FunctionsEntryField):
         return False
 
     def handle_keydown(self, event) -> None:
+        """
+            handles text changes or modifications based on keyboard inputs
+        """
         if self.editing_id:
             cursor_pos_id = self.cursors.get("id", len(self.id_str))
             if event.key == pygame.K_BACKSPACE:
@@ -770,7 +803,7 @@ class RestrictionsEntryField(FunctionsEntryField):
         return True
 
 
-class DrawEntryField(FunctionsEntryField):
+class DrawEntryField(DataEntryField):
     """
     Entry field for Draw tab: Func ID, Color ID, Rest ID
     """
@@ -794,6 +827,10 @@ class DrawEntryField(FunctionsEntryField):
         self.data_index = 0
 
     def draw(self, surface: pygame.Surface) -> None:
+        """
+            Draws all textboxes/rectangle hitboxes in the Functions tab
+            Draws the cooresponding text and text input line
+        """
         is_active = self.editing_id or self.editing_data
         bg_color = INDENT_COLOR if is_active else TEXTBOX_COLOR
         pygame.draw.rect(surface, bg_color, self.rect)
@@ -821,7 +858,8 @@ class DrawEntryField(FunctionsEntryField):
         surface.blit(id_surf, (self.id_rect.x + 5, self.id_rect.y + 7), id_clip)
 
         # Color ID
-        pygame.draw.rect(surface, (255, 255, 255) if self.editing_data and self.data_index == 0 else bg_color, self.data_rect1)
+        pygame.draw.rect(surface, (255, 255, 255) if self.editing_data and self.data_index == 0 else bg_color,
+                         self.data_rect1)
         data_surf1 = font.render(self.data_str_c, True, TEXT_COLOR)
         scroll_data0 = self.scrolls.get("data0", 0)
         clip_area1 = pygame.Rect(scroll_data0, 0, self.data_rect1.width - 5, self.data_rect1.height)
@@ -830,7 +868,8 @@ class DrawEntryField(FunctionsEntryField):
         self.scrolls["data0"] = max(0, min(scroll_data0, max_scroll0))
 
         # Rest ID
-        pygame.draw.rect(surface, (255, 255, 255) if self.editing_data and self.data_index == 1 else bg_color, self.data_rect2)
+        pygame.draw.rect(surface, (255, 255, 255) if self.editing_data and self.data_index == 1 else bg_color,
+                         self.data_rect2)
         data_surf2 = font.render(self.data_str_r, True, TEXT_COLOR)
         scroll_data1 = self.scrolls.get("data1", 0)
         clip_area2 = pygame.Rect(scroll_data1, 0, self.data_rect2.width - 5, self.data_rect2.height)
@@ -844,7 +883,8 @@ class DrawEntryField(FunctionsEntryField):
             surface.blit(btn_txt, (self.btn_enter.x + 5, self.btn_enter.y + 10))
 
         if self.editing_id:
-            cursor_x = self.id_rect.x + 5 + font.size(self.id_str[:self.cursors.get("id", len(self.id_str))])[0] - self.scrolls.get("id", 0)
+            cursor_x = (self.id_rect.x + 5 + font.size(self.id_str[:self.cursors.get("id", len(self.id_str))])[0] -
+                        self.scrolls.get("id", 0))
             cursor_y = self.id_rect.y + 5
             pygame.draw.line(surface, (0, 0, 0), (cursor_x, cursor_y), (cursor_x, cursor_y + 20), 2)
 
@@ -852,11 +892,13 @@ class DrawEntryField(FunctionsEntryField):
             key = f"data{self.data_index}"
             active_str = self.data_str_c if self.data_index == 0 else self.data_str_r
             active_rect = self.data_rect1 if self.data_index == 0 else self.data_rect2
-            cursor_x = active_rect.x + 5 + font.size(active_str[:self.cursors.get(key, len(active_str))])[0] - self.scrolls.get(key, 0)
+            cursor_x = (active_rect.x + 5 + font.size(active_str[:self.cursors.get(key, len(active_str))])[0] -
+                        self.scrolls.get(key, 0))
             cursor_y = active_rect.y + 5
             pygame.draw.line(surface, (0, 0, 0), (cursor_x, cursor_y), (cursor_x, cursor_y + 20), 2)
 
     def handle_click(self, mouse_pos) -> bool:
+        """Returns True if the 'Enter' button was clicked and confirmed."""
         if self.id_rect.collidepoint(mouse_pos):
             self.editing_id = True
             self.editing_data = False
@@ -897,6 +939,9 @@ class DrawEntryField(FunctionsEntryField):
         return False
 
     def handle_keydown(self, event) -> None:
+        """
+            handles text changes or modifications based on keyboard inputs
+        """
         if self.editing_id:
             cursor_pos_id = self.cursors.get("id", len(self.id_str))
             if event.key == pygame.K_BACKSPACE:
@@ -1092,6 +1137,7 @@ def update_functions() -> None:
 
 
 def render_grid(surface: pygame.Surface, xpoints: list[float], ypoints: list[float]):
+    """ renders the graph based on the values of xpoints and ypoints"""
     surface.fill((255, 255, 255))
     cell_w = (DRAW_MAX_X - DRAW_MIN_X) / len(xpoints)
     cell_h = (DRAW_MAX_Y - DRAW_MIN_Y) / len(ypoints)
@@ -1118,6 +1164,9 @@ def render_grid(surface: pygame.Surface, xpoints: list[float], ypoints: list[flo
 
 # redraws the functions
 def rerender_graph_surface(x_coords, y_coords):
+    """
+        renders the entire pygame surface
+    """
     global GRAPH_SURFACE
     GRAPH_SURFACE = pygame.Surface((WIDTH, HEIGHT))
     GRAPH_SURFACE.fill((255, 255, 255))
@@ -1126,6 +1175,9 @@ def rerender_graph_surface(x_coords, y_coords):
 
 # Draws the top 5 label things
 def render_tab_labels(screen: pygame.Surface, font: pygame.font.Font) -> None:
+    """
+        renders all the tabs labels and hitboxes
+    """
     for i in range(len(PANELS)):
         rect = pygame.Rect(TABS_WIDTH * i, 0, TABS_WIDTH, TABS_HEIGHT)
         pygame.draw.rect(screen, (225, 225, 225), rect)
@@ -1138,6 +1190,9 @@ def render_tab_labels(screen: pygame.Surface, font: pygame.font.Font) -> None:
 
 # draws a button that you can click
 def draw_button(screen: pygame.Surface, font: pygame.font.Font, rect: pygame.Rect, label: str) -> None:
+    """
+        draws the enter buttons
+    """
     pygame.draw.rect(screen, (225, 225, 225), rect)
     pygame.draw.rect(screen, (70, 70, 70), rect, 2)
     text_surface = font.render(label, True, (0, 0, 0))
