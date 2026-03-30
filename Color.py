@@ -5,7 +5,7 @@ from Equation import Equation
 
 class Color:
     """
-    A wrapper class that maps values to colors
+    A mapping class that evaluates equations to generate 8-bit RGB color tuples.
     """
     red: Equation
     green: Equation
@@ -18,12 +18,8 @@ class Color:
 
     def getColorTuple(self, zval: float, angle_mode="potato", env: dict = None, depth=0) -> tuple:
         """
-        returns the color tuple that corresponds to the color at any specific location
-        remember that color is a tuple of 3 integers representing rgb values
-        since color drawing uses integers, cast the value to an integer (surely a 1 point drop in color doesn't actually matter riiigghhhttt?)
-        Hey guys uh if you're reading this idk how we should scale the color values
-        can you guys decide if we should just drop immediately to 0/255 or use a 1-1 mapping system?
-        also if we should check for absolute max/min values and scale values accordingly?
+        Evaluates the constituent RGB equations for a given spatial depth or iteration ('zval').
+        Returns a clamped (0-255) integer RGB tuple, or (-1, -1, -1) if invalid.
         """
         rval, gval, bval = (self.red.evaluate(zval, 0, angle_mode, env, depth),
                             self.green.evaluate(zval, 0, angle_mode, env, depth),
