@@ -1,6 +1,7 @@
 from __future__ import annotations  # MUST be at the very top of the file
 import pygame
 import sys
+import pyperclip
 
 # Import your custom classes
 from Equation import Equation
@@ -23,8 +24,6 @@ current_panel = 'Functions'
 
 # Settings & AST Globals
 ANGLE_MODE = "radians"
-SCREEN_SIZE_OPTIONS = [(900, 700), (1100, 800), (1280, 900), (1400, 1000), (1600, 1000)]
-SCREEN_SIZE_INDEX = 1
 
 WARNING_TOTAL_GRID_POINTS = 90000
 MAX_TOTAL_GRID_POINTS = 4194304
@@ -66,8 +65,8 @@ functionsList = [
 
 functionsDict = {}
 colorsList = [("rgb", "255((x-(cos(3.7(x+0.8))/3))/2.8+1.28)",
-                                            "255(sin(1.5(x+pi/2))/2.8+0.5)",
-                                            "255(e^(-(3(x+0.99))^2)/3-x/9+0.1)")]
+              "255(sin(1.5(x+pi/2))/2.8+0.5)",
+              "255(e^(-(3(x+0.99))^2)/3-x/9+0.1)")]
 colorsDict = {}
 restrictionsList = [("rest", "rest", False)]
 restrictionsDict = {}
@@ -82,11 +81,6 @@ draw_error_states = {}
 settings_error_states = {}
 
 pygame.init()
-# Lets pygame use the system clipboard for copy/paste
-try:
-    pygame.scrap.init()
-except pygame.error:
-    pass
 
 pygame.key.set_repeat(500, 50)
 font = pygame.font.SysFont(None, 24)
@@ -188,7 +182,6 @@ class FunctionsEntryField(DataEntryField):
             cursor_y = self.data_rect.y + 5
             pygame.draw.line(surface, (0, 0, 0), (cursor_x, cursor_y), (cursor_x, cursor_y + 20), 2)
 
-
     def handle_click(self, mouse_pos) -> bool:
         """Returns True if the 'Enter' button was clicked and confirmed."""
         if self.id_rect.collidepoint(mouse_pos):
@@ -235,7 +228,7 @@ class FunctionsEntryField(DataEntryField):
                 self.cursor_position = max(0, self.cursor_position - 1)
             elif event.key == pygame.K_RIGHT:
                 self.cursor_position = min(len(self.data_str), self.cursor_position + 1)
-            else :
+            else:
                 self.data_str = (
                     self.data_str[:self.cursor_position] +
                     event.unicode +
@@ -317,7 +310,7 @@ class ColorsEntryField(FunctionsEntryField):
         pygame.draw.rect(surface, (150, 150, 150), self.rect, 1)  # Border
 
         #Added for Scrolling, not sure if it's correct
-        self.y = self.Y+scroll_y_vals[1]
+        self.y = self.Y + scroll_y_vals[1]
         self.rect.y = self.y
         self.id_rect.y = self.y + 10
         self.data_rect1.y = self.y + 10
@@ -433,8 +426,6 @@ class ColorsEntryField(FunctionsEntryField):
 
     def handle_keydown(self, event) -> None:
         # TODO: improve quality of life (holding backspace & arrow keys)
-
-
 
         #TODO: editing inside of the line instead of strictly at the end
         if self.editing_id:
@@ -656,6 +647,7 @@ class RestrictionsEntryField(FunctionsEntryField):
         update_functions()
         return True
 
+
 class DrawEntryField(FunctionsEntryField):
     """
     Entry field for Draw tab: Func ID, Color ID, Rest ID
@@ -674,8 +666,8 @@ class DrawEntryField(FunctionsEntryField):
 
         self.id_rect = pygame.Rect(30, self.y + 10, 60, 30)   # func id
         self.full_data_rect = pygame.Rect(95, self.y + 10, 140, 30)
-        self.data_rect1 = pygame.Rect(95, self.y + 10, 65, 30) # color id
-        self.data_rect2 = pygame.Rect(165, self.y + 10, 70, 30) # rest id
+        self.data_rect1 = pygame.Rect(95, self.y + 10, 65, 30)  # color id
+        self.data_rect2 = pygame.Rect(165, self.y + 10, 70, 30)  # rest id
         self.btn_enter = pygame.Rect(240, self.y + 10, 50, 30)
         self.data_index = 0
 
@@ -928,9 +920,12 @@ def update_functions() -> None:
             continue
 
         errs = []
-        if x[0] not in functionsDict: errs.append("Function ID not found")
-        if x[1] not in colorsDict: errs.append("Colour ID not found")
-        if x[2] not in restrictionsDict: errs.append("Restriction ID not found")
+        if x[0] not in functionsDict:
+            errs.append("Function ID not found")
+        if x[1] not in colorsDict:
+            errs.append("Colour ID not found")
+        if x[2] not in restrictionsDict:
+            errs.append("Restriction ID not found")
 
         if len(errs) > 0:
             draw_error_states[i] = ((200, 50, 50), ", ".join(errs))
@@ -993,43 +988,65 @@ def draw_button(screen: pygame.Surface, font: pygame.font.Font, rect: pygame.Rec
     text_rect = text_surface.get_rect(center=rect.center)
     screen.blit(text_surface, text_rect)
 
+
 def build_export_string() -> str:
     """
-    Convert the current state into a multi-line text string
-    for copy/paste export.
-    """
-    lines = []
+    Turn the current app state into one export string.
 
-    # Export all functions
+    Export format:
+
+    Function lines...
+    ~~~~~
+    Color lines...
+    ~~~~~
+    Restriction lines...
+    ~~~~~
+    Draw lines...
+    ~~~~~
+    Settings lines...
+    """
+    function_lines = []
+    color_lines = []
+    restriction_lines = []
+    draw_lines = []
+    settings_lines = []
+
+    # Functions
     for item_id, expr in functionsList:
         if item_id:
-            lines.append(f"F:{item_id}~{expr}")
+            function_lines.append(f"F:{item_id}~{expr}")
 
-    # Export all colors
+    # Colors
     for item_id, r_expr, g_expr, b_expr in colorsList:
         if item_id:
-            lines.append(f"C:{item_id}~{r_expr}~{g_expr}~{b_expr}")
+            color_lines.append(f"C:{item_id}~{r_expr}~{g_expr}~{b_expr}")
 
-    # Export all restrictions
+    # Restrictions
     for item_id, function_id, is_inverse in restrictionsList:
         if item_id:
             inverse_flag = "1" if is_inverse else "0"
-            lines.append(f"R:{item_id}~{function_id}~{inverse_flag}")
+            restriction_lines.append(f"R:{item_id}~{function_id}~{inverse_flag}")
 
-    # Export all draw rows
+    # Draw rows
     for function_id, color_id, restriction_id in drawList:
         if function_id or color_id or restriction_id:
-            lines.append(f"D~{function_id}~{color_id}~{restriction_id}")
+            draw_lines.append(f"D~{function_id}~{color_id}~{restriction_id}")
 
-    # Export settings text values
+    # Settings
     for key in ["x_min", "x_points", "x_max", "y_min", "y_points", "y_max", "max_recursion"]:
-        lines.append(f"S:{key}~{settings_values.get(key, '')}")
+        settings_lines.append(f"S:{key}~{settings_values.get(key, '')}")
 
-    # Export other settings
-    lines.append(f"S:angle_mode~{ANGLE_MODE}")
-    lines.append(f"S:screen_size_index~{SCREEN_SIZE_INDEX}")
+    settings_lines.append(f"S:angle_mode~{ANGLE_MODE}")
 
-    return "\n".join(lines)
+    sections = [
+        "\n".join(function_lines),
+        "\n".join(color_lines),
+        "\n".join(restriction_lines),
+        "\n".join(draw_lines),
+        "\n".join(settings_lines)
+    ]
+
+    return "\n~~~~~\n".join(sections)
 
 
 def _split_first(text: str, delimiter: str) -> tuple[str, str]:
@@ -1060,7 +1077,7 @@ def import_from_string(raw_text: str) -> bool:
     any continuation lines are appended onto the previous record.
     """
     global functionsList, colorsList, restrictionsList, drawList
-    global ANGLE_MODE, SCREEN_SIZE_INDEX
+    global ANGLE_MODE
     global settings_transfer_status, settings_values, active_settings_field
 
     text = raw_text.strip()
@@ -1086,7 +1103,9 @@ def import_from_string(raw_text: str) -> bool:
 
         for raw_line in text.splitlines():
             line = raw_line.strip()
-            if not line:
+
+            # Skip blank lines and section separators
+            if not line or line == "~~~~~":
                 continue
 
             # If this line begins a new valid record, start a new logical line.
@@ -1177,14 +1196,7 @@ def import_from_string(raw_text: str) -> bool:
         if "angle_mode" in imported_settings and imported_settings["angle_mode"] in {"radians", "degrees"}:
             ANGLE_MODE = imported_settings["angle_mode"]
 
-        if "screen_size_index" in imported_settings:
-            try:
-                SCREEN_SIZE_INDEX = int(imported_settings["screen_size_index"]) % len(SCREEN_SIZE_OPTIONS)
-            except ValueError:
-                pass
-
         apply_settings_from_text()
-        apply_screen_size_from_index(SCREEN_SIZE_INDEX, X_MATH_MAX - X_MATH_MIN, Y_MATH_MAX - Y_MATH_MIN)
         update_functions()
 
         active_settings_field = None
@@ -1197,6 +1209,8 @@ def import_from_string(raw_text: str) -> bool:
     except ValueError as exc:
         settings_transfer_status = f"Import failed: {exc}"
         return False
+
+
 # TODO: the UI for the other 3 tabs (Justin)
 # (should probably use something similar to render_tab_labels and draw_button for this?)
 
@@ -1205,7 +1219,6 @@ def import_from_string(raw_text: str) -> bool:
 def render_settings_overlay(screen: pygame.Surface, font: pygame.font.Font) -> None:
     """
     Draw the Settings tab UI inside the fixed left sidebar.
-
 
     This version also draws live textbox contents and stores the
     textbox/button rects so they can be clicked and edited.
@@ -1373,7 +1386,7 @@ def render_settings_overlay(screen: pygame.Surface, font: pygame.font.Font) -> N
                             enter_h)
 
         return y + 48
-    
+
     current_y = TABS_HEIGHT + 14
     current_y = draw_axis_section(current_y, "X", "x")
     current_y = draw_axis_section(current_y, "Y", "y")
@@ -1400,7 +1413,6 @@ def render_settings_overlay(screen: pygame.Surface, font: pygame.font.Font) -> N
     pygame.draw.rect(screen, (95, 95, 95), transfer_rect, 2)
 
     # Show a short preview of the transfer text
-    # Show a short preview of the transfer text
     # Replace line breaks with spaces so the preview stays on one visual line
     preview_text = settings_transfer_text.replace("\n", " ")
 
@@ -1414,22 +1426,23 @@ def render_settings_overlay(screen: pygame.Surface, font: pygame.font.Font) -> N
         transfer_rect.width - 10,
         16
     )
-    screen.blit(preview_surface, (transfer_rect.x + 5, transfer_rect.y + 4), area=pygame.Rect(0, 0, preview_clip.width, preview_clip.height))
+    screen.blit(preview_surface, (transfer_rect.x + 5, transfer_rect.y + 4),
+                area=pygame.Rect(0, 0, preview_clip.width, preview_clip.height))
 
     # Helper text
     screen.blit(
-        small_label_font.render("Paste exported text here, then press Import.", True, (80, 80, 80)),
+        small_label_font.render("Export copies out. Import reads from clipboard.", True, (80, 80, 80)),
         (transfer_rect.x + 5, transfer_rect.y + 22)
     )
 
     # Buttons under the text area
     button_y = transfer_rect.y + transfer_rect.height + 8
-    settings_buttons["export_copy"] = pygame.Rect(margin_x, button_y, 66, 26)
-    settings_buttons["paste_clipboard"] = pygame.Rect(margin_x + 74, button_y, 56, 26)
-    settings_buttons["import_text"] = pygame.Rect(margin_x + 138, button_y, 62, 26)
+    settings_buttons["export_text"] = pygame.Rect(margin_x, button_y, 80, 26)
+    settings_buttons["import_text"] = pygame.Rect(margin_x + 92, button_y, 80, 26)
 
-    draw_button(screen, button_font, settings_buttons["export_copy"], "Copy")
-    draw_button(screen, button_font, settings_buttons["paste_clipboard"], "Paste")
+    # Export copies the generated string to the device clipboard
+    # Import reads text from the device clipboard into the textbox and imports it
+    draw_button(screen, button_font, settings_buttons["export_text"], "Export")
     draw_button(screen, button_font, settings_buttons["import_text"], "Import")
 
     if settings_transfer_status:
@@ -1446,22 +1459,13 @@ def render_settings_overlay(screen: pygame.Surface, font: pygame.font.Font) -> N
         status_surface = small_label_font.render(status_text, True, (40, 40, 40))
         screen.blit(status_surface, (margin_x, button_y + 32))
 
-    bottom_y = HEIGHT - 46
-    settings_buttons["size_prev"] = pygame.Rect(margin_x, bottom_y, 36, 26)
-    settings_buttons["size_next"] = pygame.Rect(margin_x + 44, bottom_y, 36, 26)
-
-    draw_button(screen, button_font, settings_buttons["size_prev"], "<")
-    draw_button(screen, button_font, settings_buttons["size_next"], ">")
-
 
 def apply_settings_from_text() -> None:
     """
     Read the text from the Settings tab textboxes and apply them.
 
-
     Large grids are allowed.
     Only clamp when total grid points exceed MAX_TOTAL_GRID_POINTS.
-
 
     If the total is too large, clamp the field the user is currently editing.
     """
@@ -1527,7 +1531,6 @@ def apply_settings_from_text() -> None:
         calculate_draw_bounds(X_MATH_MAX - X_MATH_MIN, Y_MATH_MAX - Y_MATH_MIN)
         rerender_graph_surface(x_coords, y_coords)
 
-
     except ValueError:
         update_settings_error_states()
 
@@ -1539,9 +1542,9 @@ def handle_settings_textbox_click(mouse_pos) -> None:
     global active_settings_field
 
     textbox_keys = [
-    "x_min", "x_points", "x_max",
-    "y_min", "y_points", "y_max",
-    "max_recursion", "transfer_text"
+        "x_min", "x_points", "x_max",
+        "y_min", "y_points", "y_max",
+        "max_recursion"
     ]
 
     active_settings_field = None
@@ -1561,38 +1564,6 @@ def handle_settings_keydown(event) -> None:
         return
 
     # -----------------------------------------
-    # Special handling for the import/export box
-    # -----------------------------------------
-    if active_settings_field == "transfer_text":
-        if event.key == pygame.K_ESCAPE:
-            active_settings_field = None
-            return
-
-        if event.key == pygame.K_BACKSPACE:
-            settings_transfer_text = settings_transfer_text[:-1]
-            return
-
-        # Ctrl+V paste support
-        if event.key == pygame.K_v and (event.mod & pygame.KMOD_CTRL):
-            try:
-                clip_text = pygame.scrap.get(pygame.SCRAP_TEXT)
-                if clip_text is not None:
-                    settings_transfer_text += clip_text.decode("utf-8", errors="ignore").replace("\x00", "")
-            except pygame.error:
-                settings_transfer_status = "Clipboard paste is not available on this device."
-            return
-
-        # Enter makes a new line in the transfer box
-        if event.key == pygame.K_RETURN:
-            settings_transfer_text += "\n"
-            return
-
-        # Normal typed characters
-        if event.unicode:
-            settings_transfer_text += event.unicode
-        return
-
-    # -----------------------------------------
     # Normal numeric settings boxes
     # -----------------------------------------
     if event.key == pygame.K_RETURN:
@@ -1600,7 +1571,7 @@ def handle_settings_keydown(event) -> None:
         active_settings_field = None
         update_settings_error_states()
         return
-    
+
     if event.key == pygame.K_ESCAPE:
         active_settings_field = None
         update_settings_error_states()
@@ -1616,10 +1587,10 @@ def handle_settings_keydown(event) -> None:
         settings_values[active_settings_field] += event.unicode
         update_settings_error_states()
 
+
 def update_settings_error_states() -> None:
     """
     Rebuild the color state for settings fields.
-
 
     Meanings:
     - Red: invalid
@@ -1711,13 +1682,6 @@ def update_settings_error_states() -> None:
         pass
 
 
-def apply_screen_size_from_index(index: int, xrange: float, yrange: float) -> None:
-    global SCREEN_SIZE_INDEX, WIDTH, HEIGHT
-    SCREEN_SIZE_INDEX = index % len(SCREEN_SIZE_OPTIONS)
-    WIDTH, HEIGHT = SCREEN_SIZE_OPTIONS[SCREEN_SIZE_INDEX]
-    calculate_draw_bounds(xrange, yrange)
-
-
 # --- MAIN EXECUTION ---
 if __name__ == "__main__":
     X_GRID_RESOLUTION = 100
@@ -1726,6 +1690,7 @@ if __name__ == "__main__":
     Y_MATH_MIN, Y_MATH_MAX = -15.0, 15.0
     calculate_draw_bounds(X_MATH_MAX - X_MATH_MIN, Y_MATH_MAX - Y_MATH_MIN)
     screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
+
     pygame.display.set_caption("Render Engine")
 
     settings_values["x_min"] = str(X_MATH_MIN)
@@ -1812,7 +1777,8 @@ if __name__ == "__main__":
 
                     # If they clicked entirely outside the UI sidebar, cancel everything
                     if not clicked_any_field:
-                        for field in function_ui_fields: field.cancel()
+                        for field in function_ui_fields:
+                            field.cancel()
 
                 # TODO: the other 3 panels (Justin)
                 if current_panel == 'Colors':
@@ -1833,7 +1799,8 @@ if __name__ == "__main__":
                             if field.editing_id or field.editing_data:
                                 field.cancel()
                     if not clicked_any_field:
-                        for field in colors_ui_fields: field.cancel()
+                        for field in colors_ui_fields:
+                            field.cancel()
 
                 if current_panel == 'Restrictions':
                     if event.button == 4:       # scroll up
@@ -1877,7 +1844,8 @@ if __name__ == "__main__":
                             if field.editing_id or getattr(field, 'editing_data', False):
                                 field.cancel()
                     if not clicked_any_field:
-                        for field in draw_ui_fields: field.cancel()
+                        for field in draw_ui_fields:
+                            field.cancel()
 
                 if current_panel == 'Settings':
 
@@ -1885,45 +1853,44 @@ if __name__ == "__main__":
                     # Import / Export buttons
                     # ---------------------------------
 
-                    # Copy/export current state into the text box and clipboard
-                    if settings_buttons.get("export_copy") and settings_buttons["export_copy"].collidepoint(mouse_pos):
+                    # Export current state to the device clipboard and show it in the textbox
+                    if settings_buttons.get("export_text") and settings_buttons["export_text"].collidepoint(mouse_pos):
                         settings_transfer_text = build_export_string()
 
                         try:
-                            pygame.scrap.put(pygame.SCRAP_TEXT, settings_transfer_text.encode("utf-8"))
-                            settings_transfer_status = "Exported current state to the text box and clipboard."
-                        except pygame.error:
-                            settings_transfer_status = "Exported current state to the text box."
+                            pyperclip.copy(settings_transfer_text)
+                            settings_transfer_status = "Exported to clipboard."
+                        except pyperclip.PyperclipException:
+                            settings_transfer_status = "Clipboard export failed."
 
-                        active_settings_field = "transfer_text"
+                        active_settings_field = None
                         continue
 
-                    # Paste clipboard into the transfer box
-                    if settings_buttons.get("paste_clipboard") and settings_buttons["paste_clipboard"].collidepoint(mouse_pos):
+                    # Import reads from the device clipboard, shows it in the textbox, and imports it
+                    if settings_buttons.get("import_text") and settings_buttons["import_text"].collidepoint(mouse_pos):
                         try:
-                            clip_text = pygame.scrap.get(pygame.SCRAP_TEXT)
-                            if clip_text is None:
+                            clip_text = pyperclip.paste()
+
+                            if not clip_text:
                                 settings_transfer_status = "Clipboard is empty."
                             else:
-                                settings_transfer_text = clip_text.decode("utf-8", errors="ignore").replace("\x00", "")
-                                settings_transfer_status = "Pasted clipboard text into the import box."
-                                active_settings_field = "transfer_text"
-                        except pygame.error:
-                            settings_transfer_status = "Clipboard paste is not available on this device."
+                                settings_transfer_text = clip_text
+
+                                if import_from_string(settings_transfer_text):
+                                    # Rebuild UI rows so imported data shows immediately
+                                    function_ui_fields = [FunctionsEntryField(i, functionsList) for i in range(len(functionsList) + 1)]
+                                    colors_ui_fields = [ColorsEntryField(i, colorsList) for i in range(len(colorsList) + 1)]
+                                    rest_ui_fields = [RestrictionsEntryField(i, restrictionsList) for i in range(len(restrictionsList) + 1)]
+                                    draw_ui_fields = [DrawEntryField(i, drawList) for i in range(len(drawList) + 1)]
+
+                                    rerender_graph_surface(x_coords, y_coords)
+
+                        except pyperclip.PyperclipException:
+                            settings_transfer_status = "Clipboard import failed."
+
+                        active_settings_field = None
                         continue
 
-                    # Import from the current transfer text
-                    if settings_buttons.get("import_text") and settings_buttons["import_text"].collidepoint(mouse_pos):
-                        if import_from_string(settings_transfer_text):
-                            # Rebuild UI rows so the imported data shows up immediately
-                            function_ui_fields = [FunctionsEntryField(i, functionsList) for i in range(len(functionsList) + 1)]
-                            colors_ui_fields = [ColorsEntryField(i, colorsList) for i in range(len(colorsList) + 1)]
-                            rest_ui_fields = [RestrictionsEntryField(i, restrictionsList) for i in range(len(restrictionsList) + 1)]
-                            draw_ui_fields = [DrawEntryField(i, drawList) for i in range(len(drawList) + 1)]
-
-                            screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
-                            rerender_graph_surface(x_coords, y_coords)
-                        continue
                     # 1. First check the ENTER button for the currently active field
                     if active_settings_field is not None:
                         active_enter_key = f"{active_settings_field}_enter"
@@ -1943,26 +1910,7 @@ if __name__ == "__main__":
                         active_settings_field = None
                         continue
 
-                    # 3. Screen size buttons
-                    if settings_buttons.get("size_prev") and settings_buttons["size_prev"].collidepoint(mouse_pos):
-                        calculate_draw_bounds(X_MATH_MAX - X_MATH_MIN, Y_MATH_MAX - Y_MATH_MIN)
-                        apply_screen_size_from_index(SCREEN_SIZE_INDEX - 1, X_MATH_MAX - X_MATH_MIN,
-                                                     Y_MATH_MAX - Y_MATH_MIN)
-                        screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
-                        rerender_graph_surface(x_coords, y_coords)
-                        active_settings_field = None
-                        continue
-
-                    if settings_buttons.get("size_next") and settings_buttons["size_next"].collidepoint(mouse_pos):
-                        calculate_draw_bounds(X_MATH_MAX - X_MATH_MIN, Y_MATH_MAX - Y_MATH_MIN)
-                        apply_screen_size_from_index(SCREEN_SIZE_INDEX + 1, X_MATH_MAX - X_MATH_MIN,
-                                                     Y_MATH_MAX - Y_MATH_MIN)
-                        screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
-                        rerender_graph_surface(x_coords, y_coords)
-                        active_settings_field = None
-                        continue
-
-                    # 4. Finally, if none of the above were clicked, activate a textbox
+                    # 3. Finally, if none of the above were clicked, activate a textbox
                     handle_settings_textbox_click(mouse_pos)
 
             if event.type == pygame.KEYDOWN:
@@ -1980,6 +1928,7 @@ if __name__ == "__main__":
                         field.handle_keydown(event)
                 elif current_panel == 'Settings':
                     handle_settings_keydown(event)
+
         # 4. DRAW APPROPRIATE UI OVERLAYS
         if current_panel == 'Functions':
             for field in function_ui_fields:
