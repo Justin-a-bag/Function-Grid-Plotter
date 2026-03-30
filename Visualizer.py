@@ -1946,6 +1946,10 @@ if __name__ == "__main__":
                     handle_settings_textbox_click(mouse_pos)
 
             if event.type == pygame.KEYDOWN:
+                allowed_keys = [pygame.K_BACKSPACE, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_RETURN]
+                if event.key not in allowed_keys and (event.unicode == ""):
+                    continue
+                
                 if current_panel == 'Functions':
                     for field in function_ui_fields:
                         field.handle_keydown(event)
@@ -1960,6 +1964,7 @@ if __name__ == "__main__":
                         field.handle_keydown(event)
                 elif current_panel == 'Settings':
                     handle_settings_keydown(event)
+                    
         # 4. DRAW APPROPRIATE UI OVERLAYS
         if current_panel == 'Functions':
             for field in function_ui_fields:
