@@ -1,3 +1,8 @@
+"""
+    Visualizer document
+
+    contains the Function, Colour,Restriction
+"""
 from __future__ import annotations  # MUST be at the very top of the file
 import pygame
 import sys
@@ -915,9 +920,12 @@ def update_functions() -> None:
             continue
 
         errs = []
-        if x[0] not in functionsDict: errs.append("Function ID not found")
-        if x[1] not in colorsDict: errs.append("Colour ID not found")
-        if x[2] not in restrictionsDict: errs.append("Restriction ID not found")
+        if x[0] not in functionsDict:
+            errs.append("Function ID not found")
+        if x[1] not in colorsDict:
+            errs.append("Colour ID not found")
+        if x[2] not in restrictionsDict:
+            errs.append("Restriction ID not found")
 
         if len(errs) > 0:
             draw_error_states[i] = ((200, 50, 50), ", ".join(errs))
@@ -947,7 +955,7 @@ def render_grid(surface: pygame.Surface, xpoints: list[float], ypoints: list[flo
 
                     rect_w = max(1, next_x - screen_x)
                     rect_h = max(1, screen_y_bottom - screen_y_top)
-                    # break it into x y components and then do a rectangle draw for each one to prevent the white lines from appearing
+    # break it into x y components and then do a rectangle draw for each one to prevent the white lines from appearing
                     if squarecolor != (-1, -1, -1):
                         pygame.draw.rect(surface, squarecolor, (screen_x, screen_y_top, rect_w, rect_h))
 
