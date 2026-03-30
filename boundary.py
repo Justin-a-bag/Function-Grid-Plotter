@@ -19,7 +19,7 @@ class Boundary:
     def __init__(self, boundary=Equation("1"), checksmaller=False) -> None:
 
         self.bounder = boundary
-        self.checkSmaller = checksmaller
+        self.check_smaller = checksmaller
 
     def in_bounds(self, x: float, y: float, angle_mode="potato", env: dict = None, depth=0) -> bool:
         """
@@ -27,7 +27,6 @@ class Boundary:
         """
         # i think the code is pretty readable just like look at it ig
         squarevalue = float(self.bounder.evaluate(x, y, angle_mode, env, depth))
-        # you guys can decide if we actually want an inclusive/exclusive check for squarevalue right now it's inclusive
         if self.check_smaller == False:
             return squarevalue >= 0
         else:
@@ -40,5 +39,5 @@ if __name__ == '__main__':
 
     import python_ta
     python_ta.check_all(config={
-        'max-line-length': 120
+       'max-line-length': 120
     })
