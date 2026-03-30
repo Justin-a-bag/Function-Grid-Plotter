@@ -1,7 +1,9 @@
-"""
-    Visualizer document
-
-    contains the Function, Colour,Restriction
+""" Astra Rendering Engine
+Module Description
+=====================
+This module contains the main loop
+======================
+Matthew Chen, Justin Ng, Cindy Liu, Lingnan Meng
 """
 from __future__ import annotations  # MUST be at the very top of the file
 import pygame
@@ -9,9 +11,9 @@ import sys
 import pyperclip
 
 # Import your custom classes
-from Equation import Equation
-from Color import Color
-from Boundary import Boundary
+from equation import Equation
+from color import Color
+from boundary import Boundary
 from Entryfield import DataEntryField
 
 # Define screen and drawing boundaries
@@ -1146,9 +1148,9 @@ def render_grid(surface: pygame.Surface, xpoints: list[float], ypoints: list[flo
             math_x = xpoints[i]
             math_y = ypoints[j]
             for curFunc in drawFinal:
-                if curFunc[2].inBounds(math_x, math_y, ANGLE_MODE, functionsDict, MAX_DEPTH):
+                if curFunc[2].in_bounds(math_x, math_y, ANGLE_MODE, functionsDict, MAX_DEPTH):
                     z = curFunc[0].evaluate(math_x, math_y, ANGLE_MODE, functionsDict, MAX_DEPTH)
-                    squarecolor = curFunc[1].getColorTuple(z, ANGLE_MODE, functionsDict, MAX_DEPTH)
+                    squarecolor = curFunc[1].get_color_tuple(z, ANGLE_MODE, functionsDict, MAX_DEPTH)
                     screen_x = round(DRAW_MIN_X + i * cell_w)
                     next_x = round(DRAW_MIN_X + (i + 1) * cell_w)
 
@@ -2245,3 +2247,4 @@ if __name__ == "__main__":
         pygame.display.flip()
     pygame.quit()
     sys.exit()
+

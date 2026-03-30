@@ -1,5 +1,6 @@
 pygame
 pyperclip
+python_ta
 sys
 math
 

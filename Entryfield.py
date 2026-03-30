@@ -1,3 +1,10 @@
+""" Astra Rendering Engine
+Module Description
+=====================
+This module contains the DataEntryField abstract class which contains most of the main
+======================
+Matthew Chen, Justin Ng, Cindy Liu, Lingnan Meng
+"""
 import pygame
 TEXTBOX_Y = 50
 TEXTBOX_WIDTH, TEXTBOX_HEIGHT = 300, 50
@@ -5,7 +12,7 @@ TEXTBOX_WIDTH, TEXTBOX_HEIGHT = 300, 50
 
 class DataEntryField:
     """
-    Replaces the Textbox. Acts as a State Machine for each list item.
+    Acts as a State Machine for each list item.
     """
 
     def __init__(self, index: int, list_ref: list):
@@ -24,7 +31,7 @@ class DataEntryField:
         else:
             self.id_str = ""
             self.data_str = ""
-            
+
         self.cursors["id"] = len(self.id_str)
         self.cursors["data"] = len(self.data_str)
 

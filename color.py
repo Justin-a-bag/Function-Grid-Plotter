@@ -1,6 +1,15 @@
-from __future__ import annotations
+""" Astra Rendering Engine
+Module Description
+=====================
+This module contains the Color class containing the r,g,b functions required for drawing in pygame
+======================
+Matthew Chen, Justin Ng, Cindy Liu, Lingnan Meng
+"""
 
-from Equation import Equation
+from __future__ import annotations
+from equation import Equation
+import python_ta
+python_ta.check_all('color.py', config={'allowed-import-modules': ["Equation"]})
 
 
 class Color:
@@ -11,17 +20,16 @@ class Color:
     green: Equation
     blue: Equation
 
-    def __init__(self, red=Equation("x"), green=Equation("x"), blue=Equation("x")):
+    def __init__(self, red=Equation("x"), green=Equation("x"), blue=Equation("x")) -> None:
         self.red = red
         self.green = green
         self.blue = blue
 
-    def getColorTuple(self, zval: float, angle_mode="potato", env: dict = None, depth=0) -> tuple:
+    def get_color_tuple(self, zval: float, angle_mode="potato", env: dict = None, depth=0) -> tuple:
         """
         returns the color tuple that corresponds to the color at any specific location
-        remember that color is a tuple of 3 integers representing rgb values
-        since color drawing uses integers, cast the value to an integer (surely a 1 point drop in color doesn't actually matter riiigghhhttt?)
-        Hey guys uh if you're reading this idk how we should scale the color values
+        Color is a tuple of 3 integers representing rgb values
+        since color drawing uses integers, cast the value to an integer
         can you guys decide if we should just drop immediately to 0/255 or use a 1-1 mapping system?
         also if we should check for absolute max/min values and scale values accordingly?
         """
@@ -52,4 +60,12 @@ if __name__ == "__main__":
     g = Equation("2*x-y")
     b = Equation("3/x+5+3+y")
     newcolor = Color()
-    print(newcolor.getColorTuple(150))
+    print(newcolor.get_color_tuple(150))
+
+    import doctest
+    doctest.testmod(verbose=True)
+
+    import python_ta
+    python_ta.check_all(config={
+        'max-line-length': 120
+    })

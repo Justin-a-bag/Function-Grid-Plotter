@@ -1,4 +1,10 @@
-# write your imports here
+""" Astra Rendering Engine
+Module Description
+=====================
+This module contains the Color class containing the r,g,b functions required for drawing in pygame
+======================
+Matthew Chen, Justin Ng, Cindy Liu, Lingnan Meng
+"""
 from __future__ import annotations  # Fixes the "Unresolved Reference" for Node
 import math
 
