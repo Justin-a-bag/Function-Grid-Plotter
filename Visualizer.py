@@ -1384,8 +1384,9 @@ def import_from_string(raw_text: str) -> bool:
         return False
 # (should probably use something similar to render_tab_labels and draw_button for this?)
 
+
 # if you need to render a screen make the functions for that screen here
-def render_settings_overlay(screen: pygame.Surface, font: pygame.font.Font) -> None:
+def render_settings_overlay(screen: pygame.Surface) -> None:
     """
     Draw the Settings tab UI inside the fixed left sidebar.
 
@@ -2083,9 +2084,6 @@ if __name__ == "__main__":
                         active_settings_field = None
                         continue
 
-                    # Paste clipboard into the transfer box
-                    if (settings_buttons.get("paste_clipboard") and
-                            settings_buttons["paste_clipboard"].collidepoint(mouse_pos)):
                     # Import reads from the device clipboard, shows it in the textbox, and imports it
                     if settings_buttons.get("import_text") and settings_buttons["import_text"].collidepoint(mouse_pos):
                         try:
@@ -2097,16 +2095,16 @@ if __name__ == "__main__":
                                 settings_transfer_text = __sanitize_input(clip_text)
 
                     # Import from the current transfer text
-                    if settings_buttons.get("import_text") and settings_buttons["import_text"].collidepoint(mouse_pos):
-                        if import_from_string(settings_transfer_text):
-                            # Rebuild UI rows so the imported data shows up immediately
-                            function_ui_fields = [FunctionsEntryField(i, functionsList)
-                                                  for i in range(len(functionsList) + 1)]
-                            colors_ui_fields = [ColorsEntryField(i, colorsList) for i in range(len(colorsList) + 1)]
+                            if settings_buttons.get("import_text") and settings_buttons["import_text"].collidepoint(mouse_pos):
+                                if import_from_string(settings_transfer_text):
+                                    # Rebuild UI rows so the imported data shows up immediately
+                                    function_ui_fields = [FunctionsEntryField(i, functionsList)
+                                                          for i in range(len(functionsList) + 1)]
+                                    colors_ui_fields = [ColorsEntryField(i, colorsList) for i in range(len(colorsList) + 1)]
 
-                            rest_ui_fields = [RestrictionsEntryField(i, restrictionsList)
-                                              for i in range(len(restrictionsList) + 1)]
-                            draw_ui_fields = [DrawEntryField(i, drawList) for i in range(len(drawList) + 1)]
+                                    rest_ui_fields = [RestrictionsEntryField(i, restrictionsList)
+                                                      for i in range(len(restrictionsList) + 1)]
+                                    draw_ui_fields = [DrawEntryField(i, drawList) for i in range(len(drawList) + 1)]
 
                                     rerender_graph_surface(x_coords, y_coords)
 
