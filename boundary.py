@@ -17,7 +17,6 @@ class Boundary:
     check_smaller: bool
 
     def __init__(self, boundary=Equation("1"), checksmaller=False) -> None:
-
         self.bounder = boundary
         self.check_smaller = checksmaller
 
@@ -27,17 +26,18 @@ class Boundary:
         """
         # i think the code is pretty readable just like look at it ig
         squarevalue = float(self.bounder.evaluate(x, y, angle_mode, env, depth))
+        # you guys can decide if we actually want an inclusive/exclusive check for squarevalue right now it's inclusive
         if self.check_smaller == False:
             return squarevalue >= 0
         else:
             return squarevalue <= 0
 
-
 if __name__ == '__main__':
     import doctest
     doctest.testmod(verbose=True)
 
+
     import python_ta
     python_ta.check_all(config={
-       'max-line-length': 120
+        'max-line-length': 120
     })
