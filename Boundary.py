@@ -10,12 +10,12 @@ class Boundary:
     bounder: Equation
     checkSmaller: bool
 
-    def __init__(self, boundary = Equation("1"), checkSmaller = False):
+    def __init__(self, boundary=Equation("1"), checksmaller=False):
 
         self.bounder = boundary
-        self.checkSmaller = checkSmaller
+        self.checkSmaller = checksmaller
 
-    def inBounds(self, x: float, y: float,angle_mode="potato",env:dict = None, depth = 0) -> bool:
+    def inBounds(self, x: float, y: float, angle_mode="potato", env: dict = None, depth=0) -> bool:
         """
         returns whether or not the x and y values are in bounds as specified by the boundary provided earlier
         yeah idk guys it does what it says

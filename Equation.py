@@ -4,11 +4,13 @@ import math
 
 
 class Equation:
-    # represents one equation f(x,y) = z
-    # contains one tree
-    # evaluate(self,x:float, y:float)->float:
-    # only returns value for a single point
-    # as_string(self)->string:
+    """
+         represents one equation f(x,y) = z
+         contains one tree
+         evaluate(self,x:float, y:float)->float:
+         only returns value for a single point
+         as_string(self)->string:
+    """
 
     tree: Node
 
@@ -191,7 +193,6 @@ class Equation:
             elif token.startswith('~') and token.endswith('~'):
                 output_stack.append(Node(token))
 
-
             # STEP 3: Open Parenthesis
             elif token == '(':
                 operator_stack.append(token)
@@ -282,6 +283,7 @@ class Equation:
 
     def ast_to_string(self) -> str:
         return self.tree.ast_to_string()
+
 
 class Node:
     # op is either a string (the operation) or a value (a number or x or y)
