@@ -11,7 +11,7 @@ import sys
 import pyperclip
 
 # Import your custom classes
-from Equation import Equation
+from equation import Equation
 from color import Color
 from boundary import Boundary
 from Entryfield import DataEntryField
