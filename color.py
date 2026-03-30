@@ -8,8 +8,6 @@ Matthew Chen, Justin Ng, Cindy Liu, Lingnan Meng
 
 from __future__ import annotations
 from equation import Equation
-import python_ta
-python_ta.check_all('color.py', config={'allowed-import-modules': ["Equation"]})
 
 
 class Color:

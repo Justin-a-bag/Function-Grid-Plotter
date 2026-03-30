@@ -25,7 +25,6 @@ class Equation:
 
         tokens = []
         i = 0
-        # when taking in latex, convert all the latex stuff into standard
         # \u and \x are danger characters so be careful
 
         REPLACEMENTS = {
@@ -150,7 +149,7 @@ class Equation:
         operator_stack = []  # This stores operators that are waiting for their children
 
         def apply_operator():
-            """Pops an operator and its required children to create a sub-tree."""
+            """Pops an operator and its required children to create a subtree."""
             nonlocal potato
             try:
                 op = operator_stack.pop()
@@ -286,7 +285,7 @@ class Node:
         # children must be an ordered list
         self.children = children if children is not None else []
 
-    def size(self, env: dict = None, depth = 50) -> int:
+    def size(self, env: dict = None, depth=50) -> int:
         total_nodes = 0
 
         # Stack holds tuples of: (Node, current_depth)
@@ -336,10 +335,10 @@ class Node:
         ni = ni[:-1] + ")"
         return ni
 
-    def evaluate(self, x, y, use_radians=True, env:dict = None, depth = 50):
+    def evaluate(self, x, y, use_radians=True, env: dict = None, depth=50):
         try:
             # Evaluate children first
-            vals = [c.evaluate(x, y, use_radians,env,depth) for c in self.children]
+            vals = [c.evaluate(x, y, use_radians, env, depth) for c in self.children]
 
             if self.op == 'invalid' or any(c == 'invalid' for c in vals):
                 # invalid input error
@@ -376,7 +375,6 @@ class Node:
                 else:
                     return 'nan'  # Variable hasn't been defined yet
 
-
             # simple operations
             if self.op == '+':
                 return vals[0] + vals[1]
@@ -400,15 +398,15 @@ class Node:
             if self.op == 'ln':
                 return math.log(vals[0]) if vals[0] > 0 else 'nan'
             if self.op == 'log':
-                return math.log(vals[1], vals[0]) if (vals[0] > 0 and vals[0]!=1 and vals[1]>0) else 'nan'
+                return math.log(vals[1], vals[0]) if (vals[0] > 0 and vals[0] != 1 and vals[1] > 0) else 'nan'
             if self.op == 'sqrt':
                 return math.sqrt(vals[0]) if vals[0] >= 0 else 'nan'
             if self.op == 'cbrt':
                 return vals[0] ** (1 / 3)
 
-            #If measurements in degrees, change that
-            trig_input = vals[0] if len(vals)>0 else None
-            if use_radians == False and self.op in ('sin', 'cos', 'tan', 'sec', 'csc', 'cot'):
+            # If measurements in degrees, change that
+            trig_input = vals[0] if len(vals) > 0 else None
+            if use_radians is False and self.op in ('sin', 'cos', 'tan', 'sec', 'csc', 'cot'):
                 trig_input = math.radians(vals[0])
             # Unrestricted Trig
             if self.op == 'sin':
@@ -417,10 +415,10 @@ class Node:
                 return math.cos(trig_input)
             if self.op == 'arctan':
                 result = math.atan(vals[0])
-                return math.degrees(result) if use_radians == False else result
+                return math.degrees(result) if use_radians is False else result
             if self.op == 'arccot':
                 result = math.pi / 2 - math.atan(vals[0])
-                return math.degrees(result) if use_radians == False else result
+                return math.degrees(result) if use_radians is False else result
 
             # trig with bad values
             if self.op == 'cot':
@@ -490,12 +488,22 @@ class Node:
             if self.op == 'clamp':
                 return min(max(vals[0], vals[1]), vals[2])
 
-
             # Add other things after here
             # grammar isn't too important in this step since we can make the grammar whatever we want
             return 'invalid'
         except OverflowError:
             return 'nan'
+
+
 if __name__ == "__main__":
-    eq=Equation("log{2,x}")
-    print(eq.evaluate(1,0))
+    eq = Equation("log{2,x}")
+    print(eq.evaluate(1, 0))
+    import doctest
+
+    doctest.testmod(verbose=True)
+
+    import python_ta
+
+    python_ta.check_all(config={
+        'max-line-length': 120
+    })
