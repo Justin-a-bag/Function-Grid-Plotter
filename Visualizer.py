@@ -251,7 +251,10 @@ class FunctionsEntryField(DataEntryField):
         """Changes list indices and triggers dict rebuild."""
         global functionsList
         if self.index < len(functionsList):
-            functionsList[self.index] = (self.id_str, self.data_str)
+            if self.id_str.strip() == "" and self.data_str.strip() == "":
+                functionsList.pop(self.index)
+            else:
+                functionsList[self.index] = (self.id_str, self.data_str)
         else:
             if self.id_str.strip() != "":
                 functionsList.append((self.id_str, self.data_str))
@@ -475,7 +478,10 @@ class ColorsEntryField(FunctionsEntryField):
         """Changes list indices and triggers dict rebuild."""
         global colorsList
         if self.index < len(colorsList):
-            colorsList[self.index] = (self.id_str, self.data_str, self.data_str_g, self.data_str_b)
+            if self.id_str.strip() == "" and self.data_str.strip() == "" and self.data_str_g.strip() == "" and self.data_str_b.strip() == "":
+                colorsList.pop(self.index)
+            else:
+                colorsList[self.index] = (self.id_str, self.data_str, self.data_str_g, self.data_str_b)
         else:
             if self.id_str.strip() != "":
                 colorsList.append((self.id_str, self.data_str, self.data_str_g, self.data_str_b))
@@ -622,7 +628,10 @@ class RestrictionsEntryField(FunctionsEntryField):
     def confirm(self) -> bool:
         global restrictionsList
         if self.index < len(restrictionsList):
-            restrictionsList[self.index] = (self.id_str, self.data_str, self.checkSmaller)
+            if self.id_str.strip() == "" and self.data_str.strip() == "":
+                restrictionsList.pop(self.index)
+            else:
+                restrictionsList[self.index] = (self.id_str, self.data_str, self.checkSmaller)
         else:
             if self.id_str.strip() != "":
                 restrictionsList.append((self.id_str, self.data_str, self.checkSmaller))
@@ -783,7 +792,10 @@ class DrawEntryField(FunctionsEntryField):
     def confirm(self) -> bool:
         global drawList
         if self.index < len(drawList):
-            drawList[self.index] = (self.id_str, self.data_str_c, self.data_str_r)
+            if self.id_str.strip() == "" and self.data_str_c.strip() == "" and self.data_str_r.strip() == "":
+                drawList.pop(self.index)
+            else:
+                drawList[self.index] = (self.id_str, self.data_str_c, self.data_str_r)
         else:
             if self.id_str.strip() != "":
                 drawList.append((self.id_str, self.data_str_c, self.data_str_r))
