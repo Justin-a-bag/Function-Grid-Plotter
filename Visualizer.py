@@ -40,6 +40,8 @@ settings_values = {
 }
 
 active_settings_field = None
+settings_scrolls = {}
+settings_cursors = {}
 # Holds the raw import/export text shown in the Settings tab
 settings_transfer_text = ""
 
@@ -152,7 +154,8 @@ class FunctionsEntryField(DataEntryField):
         # 2. Draw ID Field
         pygame.draw.rect(surface, (255, 255, 255) if self.editing_id else bg_color, self.id_rect)
         id_surf = font.render(self.id_str, True, TEXT_COLOR)
-        surface.blit(id_surf, (self.id_rect.x + 5, self.id_rect.y + 7))
+        id_clip = pygame.Rect(self.scrolls.get("id", 0), 0, self.id_rect.width - 5, self.id_rect.height)
+        surface.blit(id_surf, (self.id_rect.x + 5, self.id_rect.y + 7), id_clip)
 
         # 3. Draw Data Field (With Scrolling/Clipping)
         pygame.draw.rect(surface, (255, 255, 255) if self.editing_data else bg_color, self.data_rect)
@@ -169,11 +172,12 @@ class FunctionsEntryField(DataEntryField):
 
         # Scroll through text entry field natively via subsurface clipping
         # Added horizantal scrolling(left and right key)
-        clip_area = pygame.Rect(self.scroll_x, 0, self.data_rect.width - 5, self.data_rect.height)
+        data_scroll = self.scrolls.get("data", 0)
+        clip_area = pygame.Rect(data_scroll, 0, self.data_rect.width - 5, self.data_rect.height)
         surface.blit(data_surf, (self.data_rect.x + 5, self.data_rect.y + 7), clip_area)
 
         max_scroll = max(0, data_surf.get_width() - (self.data_rect.width - 5))
-        self.scroll_x = max(0, min(self.scroll_x, max_scroll))
+        self.scrolls["data"] = max(0, min(data_scroll, max_scroll))
 
         # 4. Draw Confirm "Enter" Button
         if is_active:
@@ -181,8 +185,13 @@ class FunctionsEntryField(DataEntryField):
             btn_txt = small_font.render("ENTER", True, (0, 0, 0))
             surface.blit(btn_txt, (self.btn_enter.x + 5, self.btn_enter.y + 10))
 
+        if self.editing_id:
+            cursor_x = self.id_rect.x + 5 + font.size(self.id_str[:self.cursors.get("id", len(self.id_str))])[0] - self.scrolls.get("id", 0)
+            cursor_y = self.id_rect.y + 5
+            pygame.draw.line(surface, (0, 0, 0), (cursor_x, cursor_y), (cursor_x, cursor_y + 20), 2)
+            
         if self.editing_data:
-            cursor_x = self.data_rect.x + 5 + font.size(self.data_str[:self.cursor_position])[0] - self.scroll_x
+            cursor_x = self.data_rect.x + 5 + font.size(self.data_str[:self.cursors.get("data", len(self.data_str))])[0] - self.scrolls.get("data", 0)
             cursor_y = self.data_rect.y + 5
             pygame.draw.line(surface, (0, 0, 0), (cursor_x, cursor_y), (cursor_x, cursor_y + 20), 2)
 
@@ -192,22 +201,33 @@ class FunctionsEntryField(DataEntryField):
         if self.id_rect.collidepoint(mouse_pos):
             self.editing_id = True
             self.editing_data = False
+            
+            cursor_pos = mouse_pos[0] - (self.id_rect.x + 5) + self.scrolls.get("id", 0)
+            font_widths = [font.size(self.id_str[:i])[0] for i in range(len(self.id_str) + 1)]
+            self.cursors["id"] = min(range(len(font_widths)), key=lambda i: abs(font_widths[i] - cursor_pos))
+            cursor_pixel = font.size(self.id_str[:self.cursors["id"]])[0]
+
+            if cursor_pixel > self.id_rect.width - 10:
+                self.scrolls["id"] = cursor_pixel - (self.id_rect.width - 10)
+            else:
+                self.scrolls["id"] = 0
+                
         elif self.data_rect.collidepoint(mouse_pos):
             self.editing_data = True
             self.editing_id = False
             # Find cursor position
-            cursor_pos = mouse_pos[0] - (self.data_rect.x + 5) + self.scroll_x
+            cursor_pos = mouse_pos[0] - (self.data_rect.x + 5) + self.scrolls.get("data", 0)
             display_str = self.data_str
             font_widths = [font.size(display_str[:i])[0] for i in range(len(display_str) + 1)]
             # Set the cursor to the nearest character
-            self.cursor_position = min(range(len(font_widths)), key=lambda i: abs(font_widths[i] - cursor_pos))
+            self.cursors["data"] = min(range(len(font_widths)), key=lambda i: abs(font_widths[i] - cursor_pos))
             # Autoscroll text such that the cursor remains visible
-            cursor_pixel = font.size(self.data_str[:self.cursor_position])[0]
+            cursor_pixel = font.size(self.data_str[:self.cursors["data"]])[0]
 
             if cursor_pixel > self.data_rect.width - 10:
-                self.scroll_x = cursor_pixel - (self.data_rect.width - 10)
+                self.scrolls["data"] = cursor_pixel - (self.data_rect.width - 10)
             else:
-                self.scroll_x = 0
+                self.scrolls["data"] = 0
 
         elif self.btn_enter.collidepoint(mouse_pos) and (self.editing_id or self.editing_data):
             return self.confirm()
@@ -215,39 +235,58 @@ class FunctionsEntryField(DataEntryField):
 
     def handle_keydown(self, event):
         if self.editing_id:
+            cursor_pos_id = self.cursors.get("id", len(self.id_str))
             if event.key == pygame.K_BACKSPACE:
-                self.id_str = self.id_str[:-1]
+                if cursor_pos_id > 0:
+                    self.id_str = self.id_str[:cursor_pos_id - 1] + self.id_str[cursor_pos_id:]
+                    self.cursors["id"] -= 1
+            elif event.key == pygame.K_LEFT:
+                self.cursors["id"] = max(0, cursor_pos_id - 1)
+            elif event.key == pygame.K_RIGHT:
+                self.cursors["id"] = min(len(self.id_str), cursor_pos_id + 1)
             else:
-                self.id_str += event.unicode
+                self.id_str = self.id_str[:cursor_pos_id] + event.unicode + self.id_str[cursor_pos_id:]
+                self.cursors["id"] += 1
+                
+            cursor_pixel = font.size(self.id_str[:self.cursors["id"]])[0]
+            visible_width = self.id_rect.width - 10
+            scroll_id = self.scrolls.get("id", 0)
+
+            if cursor_pixel - scroll_id > visible_width:
+                self.scrolls["id"] = cursor_pixel - visible_width
+            elif cursor_pixel - scroll_id < 0:
+                self.scrolls["id"] = cursor_pixel
 
         elif self.editing_data:
+            cursor_pos_data = self.cursors.get("data", len(self.data_str))
             if event.key == pygame.K_BACKSPACE:
-                if self.cursor_position > 0:
+                if cursor_pos_data > 0:
                     self.data_str = (
-                            self.data_str[:self.cursor_position - 1] +
-                            self.data_str[self.cursor_position:]
+                            self.data_str[:cursor_pos_data - 1] +
+                            self.data_str[cursor_pos_data:]
                     )
-                    self.cursor_position -= 1
+                    self.cursors["data"] -= 1
 
             elif event.key == pygame.K_LEFT:
-                self.cursor_position = max(0, self.cursor_position - 1)
+                self.cursors["data"] = max(0, cursor_pos_data - 1)
             elif event.key == pygame.K_RIGHT:
-                self.cursor_position = min(len(self.data_str), self.cursor_position + 1)
+                self.cursors["data"] = min(len(self.data_str), cursor_pos_data + 1)
             else :
                 self.data_str = (
-                    self.data_str[:self.cursor_position] +
+                    self.data_str[:cursor_pos_data] +
                     event.unicode +
-                    self.data_str[self.cursor_position:])
-                self.cursor_position += 1
+                    self.data_str[cursor_pos_data:])
+                self.cursors["data"] += 1
 
-            cursor_pixel = font.size(self.data_str[:self.cursor_position])[0]
+            cursor_pixel = font.size(self.data_str[:self.cursors["data"]])[0]
             visible_width = self.data_rect.width - 10
+            scroll_data = self.scrolls.get("data", 0)
 
-            if cursor_pixel - self.scroll_x > visible_width:
-                self.scroll_x = cursor_pixel - visible_width
+            if cursor_pixel - scroll_data > visible_width:
+                self.scrolls["data"] = cursor_pixel - visible_width
 
-            elif cursor_pixel - self.scroll_x < 0:
-                self.scroll_x = cursor_pixel
+            elif cursor_pixel - scroll_data < 0:
+                self.scrolls["data"] = cursor_pixel
 
     def cancel(self):
         """Reverts the field to what it had originally without changing data."""
@@ -335,7 +374,8 @@ class ColorsEntryField(FunctionsEntryField):
         # 2. Draw ID Field
         pygame.draw.rect(surface, (255, 255, 255) if self.editing_id else bg_color, self.id_rect)
         id_surf = font.render(self.id_str, True, TEXT_COLOR)
-        surface.blit(id_surf, (self.id_rect.x + 5, self.id_rect.y + 7))
+        id_clip = pygame.Rect(self.scrolls.get("id", 0), 0, self.id_rect.width - 5, self.id_rect.height)
+        surface.blit(id_surf, (self.id_rect.x + 5, self.id_rect.y + 7), id_clip)
 
         # 3. Draw 3 Data Fields (With Scrolling/Clipping)
         pygame.draw.rect(surface, (255, 255, 255) if self.editing_data and self.data_index == 0 else bg_color,
@@ -362,22 +402,25 @@ class ColorsEntryField(FunctionsEntryField):
 
         # Scroll through text entry field natively via subsurface clipping
         # Added horizantal scrolling(left and right key)
-        clip_area = pygame.Rect(self.scroll_x, 0, self.data_rect1.width - 5, self.data_rect1.height)
+        scroll0 = self.scrolls.get("data0", 0)
+        clip_area = pygame.Rect(scroll0, 0, self.data_rect1.width - 5, self.data_rect1.height)
         surface.blit(data_surf, (self.data_rect1.x + 5, self.data_rect1.y + 7), clip_area)
         max_scroll = max(0, data_surf.get_width() - (self.data_rect1.width - 5))
-        self.scroll_x = max(0, min(self.scroll_x, max_scroll))
+        self.scrolls["data0"] = max(0, min(scroll0, max_scroll))
 
         # scroll for rectangle 2 (g)
-        clip_area = pygame.Rect(self.scroll_x, 0, self.data_rect2.width - 5, self.data_rect2.height)
+        scroll1 = self.scrolls.get("data1", 0)
+        clip_area = pygame.Rect(scroll1, 0, self.data_rect2.width - 5, self.data_rect2.height)
         surface.blit(data_surf2, (self.data_rect2.x + 5, self.data_rect2.y + 7), clip_area)
         max_scroll = max(0, data_surf2.get_width() - (self.data_rect2.width - 5))
-        self.scroll_x = max(0, min(self.scroll_x, max_scroll))
+        self.scrolls["data1"] = max(0, min(scroll1, max_scroll))
 
         # scroll for rectangle 3 (b)
-        clip_area = pygame.Rect(self.scroll_x, 0, self.data_rect3.width - 5, self.data_rect3.height)
+        scroll2 = self.scrolls.get("data2", 0)
+        clip_area = pygame.Rect(scroll2, 0, self.data_rect3.width - 5, self.data_rect3.height)
         surface.blit(data_surf3, (self.data_rect3.x + 5, self.data_rect3.y + 7), clip_area)
         max_scroll = max(0, data_surf3.get_width() - (self.data_rect3.width - 5))
-        self.scroll_x = max(0, min(self.scroll_x, max_scroll))
+        self.scrolls["data2"] = max(0, min(scroll2, max_scroll))
 
         # 4. Draw Confirm "Enter" Button
         if is_active:
@@ -385,10 +428,16 @@ class ColorsEntryField(FunctionsEntryField):
             btn_txt = small_font.render("ENTER", True, (0, 0, 0))
             surface.blit(btn_txt, (self.btn_enter.x + 5, self.btn_enter.y + 10))
 
+        if self.editing_id:
+            cursor_x = self.id_rect.x + 5 + font.size(self.id_str[:self.cursors.get("id", len(self.id_str))])[0] - self.scrolls.get("id", 0)
+            cursor_y = self.id_rect.y + 5
+            pygame.draw.line(surface, (0, 0, 0), (cursor_x, cursor_y), (cursor_x, cursor_y + 20), 2)
+            
         if self.editing_data:
+            key = f"data{self.data_index}"
             active_str = self.data_str if self.data_index == 0 else (self.data_str_g if self.data_index == 1 else self.data_str_b)
             active_rect = self.data_rect1 if self.data_index == 0 else (self.data_rect2 if self.data_index == 1 else self.data_rect3)
-            cursor_x = active_rect.x + 5 + font.size(active_str[:self.cursor_position])[0] - self.scroll_x
+            cursor_x = active_rect.x + 5 + font.size(active_str[:self.cursors.get(key, len(active_str))])[0] - self.scrolls.get(key, 0)
             cursor_y = active_rect.y + 5
             pygame.draw.line(surface, (0, 0, 0), (cursor_x, cursor_y), (cursor_x, cursor_y + 20), 2)
 
@@ -397,6 +446,15 @@ class ColorsEntryField(FunctionsEntryField):
         if self.id_rect.collidepoint(mouse_pos):
             self.editing_id = True
             self.editing_data = False
+            cursor_pos = mouse_pos[0] - (self.id_rect.x + 5) + self.scrolls.get("id", 0)
+            font_widths = [font.size(self.id_str[:i])[0] for i in range(len(self.id_str) + 1)]
+            self.cursors["id"] = min(range(len(font_widths)), key=lambda i: abs(font_widths[i] - cursor_pos))
+            cursor_pixel = font.size(self.id_str[:self.cursors["id"]])[0]
+            if cursor_pixel > self.id_rect.width - 10:
+                self.scrolls["id"] = cursor_pixel - (self.id_rect.width - 10)
+            else:
+                self.scrolls["id"] = 0
+                
         elif self.full_data_rect.collidepoint(mouse_pos):
             self.editing_data = True
             self.editing_id = False
@@ -416,14 +474,15 @@ class ColorsEntryField(FunctionsEntryField):
             else:
                 return False
 
-            cursor_pos = mouse_pos[0] - (active_rect.x + 5) + self.scroll_x
+            key = f"data{self.data_index}"
+            cursor_pos = mouse_pos[0] - (active_rect.x + 5) + self.scrolls.get(key, 0)
             font_widths = [font.size(active_str[:i])[0] for i in range(len(active_str) + 1)]
-            self.cursor_position = min(range(len(font_widths)), key=lambda i: abs(font_widths[i] - cursor_pos))
-            cursor_pixel = font.size(active_str[:self.cursor_position])[0]
+            self.cursors[key] = min(range(len(font_widths)), key=lambda i: abs(font_widths[i] - cursor_pos))
+            cursor_pixel = font.size(active_str[:self.cursors[key]])[0]
             if cursor_pixel > active_rect.width - 10:
-                self.scroll_x = cursor_pixel - (active_rect.width - 10)
+                self.scrolls[key] = cursor_pixel - (active_rect.width - 10)
             else:
-                self.scroll_x = 0
+                self.scrolls[key] = 0
 
         elif self.btn_enter.collidepoint(mouse_pos) and (self.editing_id or self.editing_data):
             return self.confirm()
@@ -436,43 +495,63 @@ class ColorsEntryField(FunctionsEntryField):
 
         #TODO: editing inside of the line instead of strictly at the end
         if self.editing_id:
+            cursor_pos_id = self.cursors.get("id", len(self.id_str))
             if event.key == pygame.K_BACKSPACE:
-                self.id_str = self.id_str[:-1]
+                if cursor_pos_id > 0:
+                    self.id_str = self.id_str[:cursor_pos_id - 1] + self.id_str[cursor_pos_id:]
+                    self.cursors["id"] -= 1
+            elif event.key == pygame.K_LEFT:
+                self.cursors["id"] = max(0, cursor_pos_id - 1)
+            elif event.key == pygame.K_RIGHT:
+                self.cursors["id"] = min(len(self.id_str), cursor_pos_id + 1)
             else:
-                self.id_str += event.unicode
+                self.id_str = self.id_str[:cursor_pos_id] + event.unicode + self.id_str[cursor_pos_id:]
+                self.cursors["id"] += 1
+
+            cursor_pixel_id = font.size(self.id_str[:self.cursors["id"]])[0]
+            visible_width_id = self.id_rect.width - 10
+            scroll_id = self.scrolls.get("id", 0)
+            if cursor_pixel_id - scroll_id > visible_width_id:
+                self.scrolls["id"] = cursor_pixel_id - visible_width_id
+            elif cursor_pixel_id - scroll_id < 0:
+                self.scrolls["id"] = cursor_pixel_id
 
         elif self.editing_data:
+            key = f"data{self.data_index}"
+            active_str = self.data_str if self.data_index == 0 else (self.data_str_g if self.data_index == 1 else self.data_str_b)
+            cursor_pos = self.cursors.get(key, len(active_str))
+            
             if event.key == pygame.K_BACKSPACE:
-                if getattr(self, 'cursor_position', 0) > 0:
+                if cursor_pos > 0:
                     if self.data_index == 0:
-                        self.data_str = self.data_str[:self.cursor_position - 1] + self.data_str[self.cursor_position:]
+                        self.data_str = self.data_str[:cursor_pos - 1] + self.data_str[cursor_pos:]
                     elif self.data_index == 1:
-                        self.data_str_g = self.data_str_g[:self.cursor_position - 1] + self.data_str_g[self.cursor_position:]
+                        self.data_str_g = self.data_str_g[:cursor_pos - 1] + self.data_str_g[cursor_pos:]
                     elif self.data_index == 2:
-                        self.data_str_b = self.data_str_b[:self.cursor_position - 1] + self.data_str_b[self.cursor_position:]
-                    self.cursor_position -= 1
+                        self.data_str_b = self.data_str_b[:cursor_pos - 1] + self.data_str_b[cursor_pos:]
+                    self.cursors[key] -= 1
             elif event.key == pygame.K_LEFT:
-                self.cursor_position = max(0, getattr(self, 'cursor_position', 0) - 1)
+                self.cursors[key] = max(0, cursor_pos - 1)
             elif event.key == pygame.K_RIGHT:
-                active_str = self.data_str if self.data_index == 0 else (self.data_str_g if self.data_index == 1 else self.data_str_b)
-                self.cursor_position = min(len(active_str), getattr(self, 'cursor_position', 0) + 1)
+                self.cursors[key] = min(len(active_str), cursor_pos + 1)
             else:
                 if self.data_index == 0:
-                    self.data_str = self.data_str[:getattr(self, 'cursor_position', 0)] + event.unicode + self.data_str[getattr(self, 'cursor_position', 0):]
+                    self.data_str = self.data_str[:cursor_pos] + event.unicode + self.data_str[cursor_pos:]
                 elif self.data_index == 1:
-                    self.data_str_g = self.data_str_g[:getattr(self, 'cursor_position', 0)] + event.unicode + self.data_str_g[getattr(self, 'cursor_position', 0):]
+                    self.data_str_g = self.data_str_g[:cursor_pos] + event.unicode + self.data_str_g[cursor_pos:]
                 elif self.data_index == 2:
-                    self.data_str_b = self.data_str_b[:getattr(self, 'cursor_position', 0)] + event.unicode + self.data_str_b[getattr(self, 'cursor_position', 0):]
-                self.cursor_position = getattr(self, 'cursor_position', 0) + 1
+                    self.data_str_b = self.data_str_b[:cursor_pos] + event.unicode + self.data_str_b[cursor_pos:]
+                self.cursors[key] = cursor_pos + 1
 
             active_str = self.data_str if self.data_index == 0 else (self.data_str_g if self.data_index == 1 else self.data_str_b)
-            cursor_pixel = font.size(active_str[:self.cursor_position])[0]
+            cursor_pixel = font.size(active_str[:self.cursors[key]])[0]
             visible_width = 40  # 50 - 10
-
-            if cursor_pixel - self.scroll_x > visible_width:
-                self.scroll_x = cursor_pixel - visible_width
-            elif cursor_pixel - self.scroll_x < 0:
-                self.scroll_x = cursor_pixel
+            scroll = self.scrolls.get(key, 0)
+            
+            if cursor_pixel - scroll > visible_width:
+                self.scrolls[key] = cursor_pixel - visible_width
+            elif cursor_pixel - scroll < 0:
+                self.scrolls[key] = cursor_pixel
 
     def cancel(self):
         """Reverts the field to what it had originally without changing data."""
@@ -550,15 +629,17 @@ class RestrictionsEntryField(FunctionsEntryField):
         # ID Field
         pygame.draw.rect(surface, (255, 255, 255) if self.editing_id else bg_color, self.id_rect)
         id_surf = font.render(self.id_str, True, TEXT_COLOR)
-        surface.blit(id_surf, (self.id_rect.x + 5, self.id_rect.y + 7))
+        id_clip = pygame.Rect(self.scrolls.get("id", 0), 0, self.id_rect.width - 5, self.id_rect.height)
+        surface.blit(id_surf, (self.id_rect.x + 5, self.id_rect.y + 7), id_clip)
 
         # Target Func Field
         pygame.draw.rect(surface, (255, 255, 255) if self.editing_data else bg_color, self.data_rect1)
         data_surf = font.render(self.data_str, True, TEXT_COLOR)
-        clip_area = pygame.Rect(self.scroll_x, 0, self.data_rect1.width - 5, self.data_rect1.height)
+        scroll_data = self.scrolls.get("data", 0)
+        clip_area = pygame.Rect(scroll_data, 0, self.data_rect1.width - 5, self.data_rect1.height)
         surface.blit(data_surf, (self.data_rect1.x + 5, self.data_rect1.y + 7), clip_area)
         max_scroll = max(0, data_surf.get_width() - (self.data_rect1.width - 5))
-        self.scroll_x = max(0, min(self.scroll_x, max_scroll))
+        self.scrolls["data"] = max(0, min(scroll_data, max_scroll))
 
         # Boolean Field
         pygame.draw.rect(surface, bg_color, self.bool_rect)
@@ -573,8 +654,13 @@ class RestrictionsEntryField(FunctionsEntryField):
             btn_txt = small_font.render("ENTER", True, (0, 0, 0))
             surface.blit(btn_txt, (self.btn_enter.x + 5, self.btn_enter.y + 10))
 
+        if self.editing_id:
+            cursor_x = self.id_rect.x + 5 + font.size(self.id_str[:self.cursors.get("id", len(self.id_str))])[0] - self.scrolls.get("id", 0)
+            cursor_y = self.id_rect.y + 5
+            pygame.draw.line(surface, (0, 0, 0), (cursor_x, cursor_y), (cursor_x, cursor_y + 20), 2)
+            
         if self.editing_data:
-            cursor_x = self.data_rect1.x + 5 + font.size(self.data_str[:getattr(self, 'cursor_position', 0)])[0] - self.scroll_x
+            cursor_x = self.data_rect1.x + 5 + font.size(self.data_str[:self.cursors.get("data", len(self.data_str))])[0] - self.scrolls.get("data", 0)
             cursor_y = self.data_rect1.y + 5
             pygame.draw.line(surface, (0, 0, 0), (cursor_x, cursor_y), (cursor_x, cursor_y + 20), 2)
 
@@ -582,17 +668,27 @@ class RestrictionsEntryField(FunctionsEntryField):
         if self.id_rect.collidepoint(mouse_pos):
             self.editing_id = True
             self.editing_data = False
+            cursor_pos = mouse_pos[0] - (self.id_rect.x + 5) + self.scrolls.get("id", 0)
+            font_widths = [font.size(self.id_str[:i])[0] for i in range(len(self.id_str) + 1)]
+            self.cursors["id"] = min(range(len(font_widths)), key=lambda i: abs(font_widths[i] - cursor_pos))
+            cursor_pixel = font.size(self.id_str[:self.cursors["id"]])[0]
+            if cursor_pixel > self.id_rect.width - 10:
+                self.scrolls["id"] = cursor_pixel - (self.id_rect.width - 10)
+            else:
+                self.scrolls["id"] = 0
+                
         elif self.data_rect1.collidepoint(mouse_pos):
             self.editing_data = True
             self.editing_id = False
-            cursor_pos = mouse_pos[0] - (self.data_rect1.x + 5) + self.scroll_x
+            cursor_pos = mouse_pos[0] - (self.data_rect1.x + 5) + self.scrolls.get("data", 0)
             font_widths = [font.size(self.data_str[:i])[0] for i in range(len(self.data_str) + 1)]
-            self.cursor_position = min(range(len(font_widths)), key=lambda i: abs(font_widths[i] - cursor_pos))
-            cursor_pixel = font.size(self.data_str[:self.cursor_position])[0]
+            self.cursors["data"] = min(range(len(font_widths)), key=lambda i: abs(font_widths[i] - cursor_pos))
+            cursor_pixel = font.size(self.data_str[:self.cursors["data"]])[0]
             if cursor_pixel > self.data_rect1.width - 10:
-                self.scroll_x = cursor_pixel - (self.data_rect1.width - 10)
+                self.scrolls["data"] = cursor_pixel - (self.data_rect1.width - 10)
             else:
-                self.scroll_x = 0
+                self.scrolls["data"] = 0
+                
         elif self.bool_rect.collidepoint(mouse_pos):
             self.checkSmaller = not self.checkSmaller
             self.editing_data = True
@@ -603,29 +699,48 @@ class RestrictionsEntryField(FunctionsEntryField):
 
     def handle_keydown(self, event) -> None:
         if self.editing_id:
+            cursor_pos_id = self.cursors.get("id", len(self.id_str))
             if event.key == pygame.K_BACKSPACE:
-                self.id_str = self.id_str[:-1]
-            else:
-                self.id_str += event.unicode
-        elif self.editing_data:
-            if event.key == pygame.K_BACKSPACE:
-                if getattr(self, 'cursor_position', 0) > 0:
-                    self.data_str = self.data_str[:self.cursor_position - 1] + self.data_str[self.cursor_position:]
-                    self.cursor_position -= 1
+                if cursor_pos_id > 0:
+                    self.id_str = self.id_str[:cursor_pos_id - 1] + self.id_str[cursor_pos_id:]
+                    self.cursors["id"] -= 1
             elif event.key == pygame.K_LEFT:
-                self.cursor_position = max(0, getattr(self, 'cursor_position', 0) - 1)
+                self.cursors["id"] = max(0, cursor_pos_id - 1)
             elif event.key == pygame.K_RIGHT:
-                self.cursor_position = min(len(self.data_str), getattr(self, 'cursor_position', 0) + 1)
+                self.cursors["id"] = min(len(self.id_str), cursor_pos_id + 1)
             else:
-                self.data_str = self.data_str[:getattr(self, 'cursor_position', 0)] + event.unicode + self.data_str[getattr(self, 'cursor_position', 0):]
-                self.cursor_position = getattr(self, 'cursor_position', 0) + 1
+                self.id_str = self.id_str[:cursor_pos_id] + event.unicode + self.id_str[cursor_pos_id:]
+                self.cursors["id"] += 1
+                
+            cursor_pixel_id = font.size(self.id_str[:self.cursors["id"]])[0]
+            visible_width_id = self.id_rect.width - 10
+            scroll_id = self.scrolls.get("id", 0)
+            if cursor_pixel_id - scroll_id > visible_width_id:
+                self.scrolls["id"] = cursor_pixel_id - visible_width_id
+            elif cursor_pixel_id - scroll_id < 0:
+                self.scrolls["id"] = cursor_pixel_id
 
-            cursor_pixel = font.size(self.data_str[:getattr(self, 'cursor_position', 0)])[0]
+        elif self.editing_data:
+            cursor_pos_data = self.cursors.get("data", len(self.data_str))
+            if event.key == pygame.K_BACKSPACE:
+                if cursor_pos_data > 0:
+                    self.data_str = self.data_str[:cursor_pos_data - 1] + self.data_str[cursor_pos_data:]
+                    self.cursors["data"] -= 1
+            elif event.key == pygame.K_LEFT:
+                self.cursors["data"] = max(0, cursor_pos_data - 1)
+            elif event.key == pygame.K_RIGHT:
+                self.cursors["data"] = min(len(self.data_str), cursor_pos_data + 1)
+            else:
+                self.data_str = self.data_str[:cursor_pos_data] + event.unicode + self.data_str[cursor_pos_data:]
+                self.cursors["data"] += 1
+
+            cursor_pixel = font.size(self.data_str[:self.cursors["data"]])[0]
             visible_width = self.data_rect1.width - 10
-            if cursor_pixel - self.scroll_x > visible_width:
-                self.scroll_x = cursor_pixel - visible_width
-            elif cursor_pixel - self.scroll_x < 0:
-                self.scroll_x = cursor_pixel
+            scroll_data = self.scrolls.get("data", 0)
+            if cursor_pixel - scroll_data > visible_width:
+                self.scrolls["data"] = cursor_pixel - visible_width
+            elif cursor_pixel - scroll_data < 0:
+                self.scrolls["data"] = cursor_pixel
 
     def cancel(self):
         self.id_str = self.backup_id
@@ -701,27 +816,42 @@ class DrawEntryField(FunctionsEntryField):
         # Func ID (stored in id_str basically from super class)
         pygame.draw.rect(surface, (255, 255, 255) if self.editing_id else bg_color, self.id_rect)
         id_surf = font.render(self.id_str, True, TEXT_COLOR)
-        surface.blit(id_surf, (self.id_rect.x + 5, self.id_rect.y + 7))
+        id_clip = pygame.Rect(self.scrolls.get("id", 0), 0, self.id_rect.width - 5, self.id_rect.height)
+        surface.blit(id_surf, (self.id_rect.x + 5, self.id_rect.y + 7), id_clip)
 
         # Color ID
         pygame.draw.rect(surface, (255, 255, 255) if self.editing_data and self.data_index == 0 else bg_color, self.data_rect1)
         data_surf1 = font.render(self.data_str_c, True, TEXT_COLOR)
-        surface.blit(data_surf1, (self.data_rect1.x + 5, self.data_rect1.y + 7))
+        scroll_data0 = self.scrolls.get("data0", 0)
+        clip_area1 = pygame.Rect(scroll_data0, 0, self.data_rect1.width - 5, self.data_rect1.height)
+        surface.blit(data_surf1, (self.data_rect1.x + 5, self.data_rect1.y + 7), clip_area1)
+        max_scroll0 = max(0, data_surf1.get_width() - (self.data_rect1.width - 5))
+        self.scrolls["data0"] = max(0, min(scroll_data0, max_scroll0))
 
         # Rest ID
         pygame.draw.rect(surface, (255, 255, 255) if self.editing_data and self.data_index == 1 else bg_color, self.data_rect2)
         data_surf2 = font.render(self.data_str_r, True, TEXT_COLOR)
-        surface.blit(data_surf2, (self.data_rect2.x + 5, self.data_rect2.y + 7))
+        scroll_data1 = self.scrolls.get("data1", 0)
+        clip_area2 = pygame.Rect(scroll_data1, 0, self.data_rect2.width - 5, self.data_rect2.height)
+        surface.blit(data_surf2, (self.data_rect2.x + 5, self.data_rect2.y + 7), clip_area2)
+        max_scroll1 = max(0, data_surf2.get_width() - (self.data_rect2.width - 5))
+        self.scrolls["data1"] = max(0, min(scroll_data1, max_scroll1))
 
         if is_active:
             pygame.draw.rect(surface, (100, 200, 100), self.btn_enter)
             btn_txt = small_font.render("ENTER", True, (0, 0, 0))
             surface.blit(btn_txt, (self.btn_enter.x + 5, self.btn_enter.y + 10))
 
+        if self.editing_id:
+            cursor_x = self.id_rect.x + 5 + font.size(self.id_str[:self.cursors.get("id", len(self.id_str))])[0] - self.scrolls.get("id", 0)
+            cursor_y = self.id_rect.y + 5
+            pygame.draw.line(surface, (0, 0, 0), (cursor_x, cursor_y), (cursor_x, cursor_y + 20), 2)
+            
         if self.editing_data:
+            key = f"data{self.data_index}"
             active_str = self.data_str_c if self.data_index == 0 else self.data_str_r
             active_rect = self.data_rect1 if self.data_index == 0 else self.data_rect2
-            cursor_x = active_rect.x + 5 + font.size(active_str[:getattr(self, 'cursor_position', 0)])[0] - self.scroll_x
+            cursor_x = active_rect.x + 5 + font.size(active_str[:self.cursors.get(key, len(active_str))])[0] - self.scrolls.get(key, 0)
             cursor_y = active_rect.y + 5
             pygame.draw.line(surface, (0, 0, 0), (cursor_x, cursor_y), (cursor_x, cursor_y + 20), 2)
 
@@ -729,6 +859,15 @@ class DrawEntryField(FunctionsEntryField):
         if self.id_rect.collidepoint(mouse_pos):
             self.editing_id = True
             self.editing_data = False
+            cursor_pos = mouse_pos[0] - (self.id_rect.x + 5) + self.scrolls.get("id", 0)
+            font_widths = [font.size(self.id_str[:i])[0] for i in range(len(self.id_str) + 1)]
+            self.cursors["id"] = min(range(len(font_widths)), key=lambda i: abs(font_widths[i] - cursor_pos))
+            cursor_pixel = font.size(self.id_str[:self.cursors["id"]])[0]
+            if cursor_pixel > self.id_rect.width - 10:
+                self.scrolls["id"] = cursor_pixel - (self.id_rect.width - 10)
+            else:
+                self.scrolls["id"] = 0
+                
         elif self.full_data_rect.collidepoint(mouse_pos):
             self.editing_data = True
             self.editing_id = False
@@ -743,53 +882,75 @@ class DrawEntryField(FunctionsEntryField):
             else:
                 return False
 
-            cursor_pos = mouse_pos[0] - (active_rect.x + 5) + self.scroll_x
+            key = f"data{self.data_index}"
+            cursor_pos = mouse_pos[0] - (active_rect.x + 5) + self.scrolls.get(key, 0)
             font_widths = [font.size(active_str[:i])[0] for i in range(len(active_str) + 1)]
-            self.cursor_position = min(range(len(font_widths)), key=lambda i: abs(font_widths[i] - cursor_pos))
-            cursor_pixel = font.size(active_str[:self.cursor_position])[0]
+            self.cursors[key] = min(range(len(font_widths)), key=lambda i: abs(font_widths[i] - cursor_pos))
+            cursor_pixel = font.size(active_str[:self.cursors[key]])[0]
             if cursor_pixel > active_rect.width - 10:
-                self.scroll_x = cursor_pixel - (active_rect.width - 10)
+                self.scrolls[key] = cursor_pixel - (active_rect.width - 10)
             else:
-                self.scroll_x = 0
+                self.scrolls[key] = 0
         elif self.btn_enter.collidepoint(mouse_pos) and (self.editing_id or self.editing_data):
             return self.confirm()
         return False
 
     def handle_keydown(self, event) -> None:
         if self.editing_id:
+            cursor_pos_id = self.cursors.get("id", len(self.id_str))
             if event.key == pygame.K_BACKSPACE:
-                self.id_str = self.id_str[:-1]
-            else:
-                self.id_str += event.unicode
-        elif self.editing_data:
-            if event.key == pygame.K_BACKSPACE:
-                if getattr(self, 'cursor_position', 0) > 0:
-                    if self.data_index == 0:
-                        self.data_str_c = self.data_str_c[:self.cursor_position - 1] + self.data_str_c[self.cursor_position:]
-                    else:
-                        self.data_str_r = self.data_str_r[:self.cursor_position - 1] + self.data_str_r[self.cursor_position:]
-                    self.cursor_position -= 1
+                if cursor_pos_id > 0:
+                    self.id_str = self.id_str[:cursor_pos_id - 1] + self.id_str[cursor_pos_id:]
+                    self.cursors["id"] -= 1
             elif event.key == pygame.K_LEFT:
-                self.cursor_position = max(0, getattr(self, 'cursor_position', 0) - 1)
+                self.cursors["id"] = max(0, cursor_pos_id - 1)
             elif event.key == pygame.K_RIGHT:
-                active_str = self.data_str_c if self.data_index == 0 else self.data_str_r
-                self.cursor_position = min(len(active_str), getattr(self, 'cursor_position', 0) + 1)
+                self.cursors["id"] = min(len(self.id_str), cursor_pos_id + 1)
+            else:
+                self.id_str = self.id_str[:cursor_pos_id] + event.unicode + self.id_str[cursor_pos_id:]
+                self.cursors["id"] += 1
+                
+            cursor_pixel_id = font.size(self.id_str[:self.cursors["id"]])[0]
+            visible_width_id = self.id_rect.width - 10
+            scroll_id = self.scrolls.get("id", 0)
+            if cursor_pixel_id - scroll_id > visible_width_id:
+                self.scrolls["id"] = cursor_pixel_id - visible_width_id
+            elif cursor_pixel_id - scroll_id < 0:
+                self.scrolls["id"] = cursor_pixel_id
+                
+        elif self.editing_data:
+            key = f"data{self.data_index}"
+            active_str = self.data_str_c if self.data_index == 0 else self.data_str_r
+            cursor_pos = self.cursors.get(key, len(active_str))
+            
+            if event.key == pygame.K_BACKSPACE:
+                if cursor_pos > 0:
+                    if self.data_index == 0:
+                        self.data_str_c = self.data_str_c[:cursor_pos - 1] + self.data_str_c[cursor_pos:]
+                    else:
+                        self.data_str_r = self.data_str_r[:cursor_pos - 1] + self.data_str_r[cursor_pos:]
+                    self.cursors[key] -= 1
+            elif event.key == pygame.K_LEFT:
+                self.cursors[key] = max(0, cursor_pos - 1)
+            elif event.key == pygame.K_RIGHT:
+                self.cursors[key] = min(len(active_str), cursor_pos + 1)
             else:
                 if self.data_index == 0:
-                    self.data_str_c = self.data_str_c[:getattr(self, 'cursor_position', 0)] + event.unicode + self.data_str_c[getattr(self, 'cursor_position', 0):]
+                    self.data_str_c = self.data_str_c[:cursor_pos] + event.unicode + self.data_str_c[cursor_pos:]
                 else:
-                    self.data_str_r = self.data_str_r[:getattr(self, 'cursor_position', 0)] + event.unicode + self.data_str_r[getattr(self, 'cursor_position', 0):]
-                self.cursor_position = getattr(self, 'cursor_position', 0) + 1
+                    self.data_str_r = self.data_str_r[:cursor_pos] + event.unicode + self.data_str_r[cursor_pos:]
+                self.cursors[key] += 1
 
             active_str = self.data_str_c if self.data_index == 0 else self.data_str_r
             active_rect = self.data_rect1 if self.data_index == 0 else self.data_rect2
-            cursor_pixel = font.size(active_str[:getattr(self, 'cursor_position', 0)])[0]
+            cursor_pixel = font.size(active_str[:self.cursors[key]])[0]
             visible_width = active_rect.width - 10
-
-            if cursor_pixel - self.scroll_x > visible_width:
-                self.scroll_x = cursor_pixel - visible_width
-            elif cursor_pixel - self.scroll_x < 0:
-                self.scroll_x = cursor_pixel
+            scroll = self.scrolls.get(key, 0)
+            
+            if cursor_pixel - scroll > visible_width:
+                self.scrolls[key] = cursor_pixel - visible_width
+            elif cursor_pixel - scroll < 0:
+                self.scrolls[key] = cursor_pixel
 
     def cancel(self):
         self.id_str = self.backup_id
@@ -1237,7 +1398,15 @@ def render_settings_overlay(screen: pygame.Surface, font: pygame.font.Font) -> N
 
         value = settings_values.get(field_key, "")
         text_surface = text_font.render(value, True, (0, 0, 0))
-        screen.blit(text_surface, (rect.x + 5, rect.y + 5))
+        scroll = settings_scrolls.get(field_key, 0)
+        clip_area = pygame.Rect(scroll, 0, w - 10, h)
+        screen.blit(text_surface, (rect.x + 5, rect.y + 5), clip_area)
+        
+        if active_settings_field == field_key:
+            cursor_pos = settings_cursors.get(field_key, len(value))
+            cursor_x = rect.x + 5 + text_font.size(value[:cursor_pos])[0] - scroll
+            cursor_y = rect.y + 5
+            pygame.draw.line(screen, (0, 0, 0), (cursor_x, cursor_y), (cursor_x, cursor_y + 16), 2)
 
         return rect
 
@@ -1529,6 +1698,19 @@ def handle_settings_textbox_click(mouse_pos) -> None:
     for key in textbox_keys:
         if key in settings_buttons and settings_buttons[key].collidepoint(mouse_pos):
             active_settings_field = key
+            if key in settings_values: # exclude transfer text
+                value = settings_values.get(key, "")
+                scroll = settings_scrolls.get(key, 0)
+                rect = settings_buttons[key]
+                cursor_pos_x = mouse_pos[0] - (rect.x + 5) + scroll
+                font_widths = [font.size(value[:i])[0] for i in range(len(value) + 1)]
+                settings_cursors[key] = min(range(len(font_widths)), key=lambda i: abs(font_widths[i] - cursor_pos_x))
+                
+                cursor_pixel = font.size(value[:settings_cursors[key]])[0]
+                if cursor_pixel > rect.width - 10:
+                    settings_scrolls[key] = cursor_pixel - (rect.width - 10)
+                else:
+                    settings_scrolls[key] = 0
             break
 
 
@@ -1587,15 +1769,36 @@ def handle_settings_keydown(event) -> None:
         update_settings_error_states()
         return
 
-    if event.key == pygame.K_BACKSPACE:
-        settings_values[active_settings_field] = settings_values[active_settings_field][:-1]
-        update_settings_error_states()
-        return
+    value = settings_values[active_settings_field]
+    cursor_pos = settings_cursors.get(active_settings_field, len(value))
 
-    allowed_chars = "0123456789.-"
-    if event.unicode in allowed_chars:
-        settings_values[active_settings_field] += event.unicode
-        update_settings_error_states()
+    if event.key == pygame.K_BACKSPACE:
+        if cursor_pos > 0:
+            settings_values[active_settings_field] = value[:cursor_pos - 1] + value[cursor_pos:]
+            settings_cursors[active_settings_field] = cursor_pos - 1
+            update_settings_error_states()
+    elif event.key == pygame.K_LEFT:
+        settings_cursors[active_settings_field] = max(0, cursor_pos - 1)
+    elif event.key == pygame.K_RIGHT:
+        settings_cursors[active_settings_field] = min(len(value), cursor_pos + 1)
+    else:
+        allowed_chars = "0123456789.-"
+        if event.unicode in allowed_chars:
+            settings_values[active_settings_field] = value[:cursor_pos] + event.unicode + value[cursor_pos:]
+            settings_cursors[active_settings_field] = cursor_pos + 1
+            update_settings_error_states()
+            
+    # Autoscroll
+    value = settings_values[active_settings_field]
+    cursor_pixel = font.size(value[:settings_cursors[active_settings_field]])[0]
+    rect_width = settings_buttons[active_settings_field].width
+    visible_width = rect_width - 10
+    scroll = settings_scrolls.get(active_settings_field, 0)
+    
+    if cursor_pixel - scroll > visible_width:
+        settings_scrolls[active_settings_field] = cursor_pixel - visible_width
+    elif cursor_pixel - scroll < 0:
+        settings_scrolls[active_settings_field] = cursor_pixel
 
 def update_settings_error_states() -> None:
     """

@@ -13,8 +13,9 @@ class DataEntryField:
         self.Y = TEXTBOX_Y + (index * TEXTBOX_HEIGHT)
         self.y = self.Y
         self.rect = pygame.Rect(0, self.y, TEXTBOX_WIDTH, TEXTBOX_HEIGHT)
-        # TODO: autoscroll text to the right when you click on it (Cindy)
-        self.scroll_x = 0
+        # Dicts for horizontal scrolling and subfield cursors
+        self.scrolls = {"id": 0, "data": 0}
+        self.cursors = {}
 
         # Determine if this is a populated field or the "New" generation field at the bottom
         if index < len(list_ref):
@@ -23,8 +24,9 @@ class DataEntryField:
         else:
             self.id_str = ""
             self.data_str = ""
-        # create a cursor
-        self.cursor_position = len(self.data_str)
+        
+        self.cursors["id"] = len(self.id_str)
+        self.cursors["data"] = len(self.data_str)
 
         # Backups for when the user clicks off (Cancels)
         self.backup_id = self.id_str
