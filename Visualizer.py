@@ -60,9 +60,7 @@ functionsList = [
 ]
 
 functionsDict = {}
-colorsList = [("rgb", "255((x-(cos(3.7(x+0.8))/3))/2.8+1.28)",
-                                            "255(sin(1.5(x+pi/2))/2.8+0.5)",
-                                            "255(e^(-(3(x+0.99))^2)/3-x/9+0.1)")]
+colorsList = [("rgb", "r","g","b")]
 colorsDict = {}
 restrictionsList = [("rest", "rest", False)]
 restrictionsDict = {}
@@ -846,43 +844,26 @@ def update_functions() -> None:
     # --- 2. BUILD SECONDARY DICTS ---
     colorsDict.clear()
     for i, item in enumerate(colorsList):
-        u_id, u_r, u_g, u_b = item[0], item[1], item[2], item[3]
 
-        if not u_id:
+        if not item[0]:
             color_error_states[i] = ((150, 150, 150), "")  # Grey (Empty)
             continue
 
         # Rule 1: NO Tildes in the declaration box!
-        if ';' in u_id:
-            color_error_states[i] = ((200, 50, 50),
-                                     "Variable names cannot contain ';'. " +
-                                     "Use ';' only when referencing them in equations.")
-            continue  # Kill the ID
+        color_errs = []
+        for n in range(1, 4):
+            if item[n] not in functionsDict:
+                color_errs.append("Function ID not found")
+                continue
+        if item[0] in colorsDict:
+            color_error_states[i] = ((200, 200, 50), "Duplicate ID")
+            continue
 
-        # Rule 2: Duplicate Check
-        if u_id in seen_ids:
-            color_error_states[i] = ((200, 200, 50), "Duplicate ID: Using the first declared value.")
-            continue  # Skip adding to dict
-
-        seen_ids.add(u_id)
-
-        # Rule 3: Compile the math and check tree integrity
-        r = Equation(u_r)
-        g = Equation(u_g)
-        b = Equation(u_b)
-
-        eq = Color(r, g, b)
-        colorsDict[u_id] = eq
-
-        # Check for Math Errors vs Size Warnings
-        if (r.tree.op == 'invalid' or r.tree.op == 'potato' or g.tree.op == 'invalid' or g.tree.op == 'potato' or
-                b.tree.op == 'invalid' or b.tree.op == 'potato'):
-            color_error_states[i] = ((200, 50, 50), "Math Error: Invalid syntax or missing arguments.")
-        elif (r.size(colorsDict, MAX_DEPTH) > 100 or g.size(colorsDict, MAX_DEPTH) > 100 or
-              b.size(colorsDict, MAX_DEPTH) > 100):
-            color_error_states[i] = ((50, 100, 200), "Warning: Large function tree. May impact performance.")
+        if len(color_errs) > 0:
+            color_error_states[i] = ((200, 50, 50), ", ".join(color_errs))
         else:
-            color_error_states[i] = ((50, 200, 50), "Valid")  # Green
+            colorsDict[item[0]] = Color(functionsDict[item[1]], functionsDict[item[2]], functionsDict[item[3]])
+            color_error_states[i] = ((50, 200, 50), "Valid")
 
     restrictionsDict.clear()
     for i, x in enumerate(restrictionsList):
@@ -1427,7 +1408,6 @@ if __name__ == "__main__":
 
     function_ui_fields = [FunctionsEntryField(i, functionsList) for i in range(len(functionsList) + 1)]
     colors_ui_fields = [ColorsEntryField(i, colorsList) for i in range(len(colorsList) + 1)]
-
     rest_ui_fields = [RestrictionsEntryField(i, restrictionsList) for i in range(len(restrictionsList) + 1)]
     draw_ui_fields = [DrawEntryField(i, drawList) for i in range(len(drawList) + 1)]
 
