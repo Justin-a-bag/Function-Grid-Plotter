@@ -40,6 +40,11 @@ settings_values = {
 }
 
 active_settings_field = None
+# Holds the raw import/export text shown in the Settings tab
+settings_transfer_text = ""
+
+# Small status message shown under the import/export buttons
+settings_transfer_status = ""
 
 GRAPH_SURFACE = None
 
@@ -77,6 +82,12 @@ draw_error_states = {}
 settings_error_states = {}
 
 pygame.init()
+# Lets pygame use the system clipboard for copy/paste
+try:
+    pygame.scrap.init()
+except pygame.error:
+    pass
+
 pygame.key.set_repeat(500, 50)
 font = pygame.font.SysFont(None, 24)
 small_font = pygame.font.SysFont(None, 18)
@@ -982,7 +993,210 @@ def draw_button(screen: pygame.Surface, font: pygame.font.Font, rect: pygame.Rec
     text_rect = text_surface.get_rect(center=rect.center)
     screen.blit(text_surface, text_rect)
 
+def build_export_string() -> str:
+    """
+    Convert the current state into a multi-line text string
+    for copy/paste export.
+    """
+    lines = []
 
+    # Export all functions
+    for item_id, expr in functionsList:
+        if item_id:
+            lines.append(f"F:{item_id}~{expr}")
+
+    # Export all colors
+    for item_id, r_expr, g_expr, b_expr in colorsList:
+        if item_id:
+            lines.append(f"C:{item_id}~{r_expr}~{g_expr}~{b_expr}")
+
+    # Export all restrictions
+    for item_id, function_id, is_inverse in restrictionsList:
+        if item_id:
+            inverse_flag = "1" if is_inverse else "0"
+            lines.append(f"R:{item_id}~{function_id}~{inverse_flag}")
+
+    # Export all draw rows
+    for function_id, color_id, restriction_id in drawList:
+        if function_id or color_id or restriction_id:
+            lines.append(f"D~{function_id}~{color_id}~{restriction_id}")
+
+    # Export settings text values
+    for key in ["x_min", "x_points", "x_max", "y_min", "y_points", "y_max", "max_recursion"]:
+        lines.append(f"S:{key}~{settings_values.get(key, '')}")
+
+    # Export other settings
+    lines.append(f"S:angle_mode~{ANGLE_MODE}")
+    lines.append(f"S:screen_size_index~{SCREEN_SIZE_INDEX}")
+
+    return "\n".join(lines)
+
+
+def _split_first(text: str, delimiter: str) -> tuple[str, str]:
+    """
+    Split only on the FIRST occurrence of delimiter.
+    Example:
+        'F:eq1~x^2+1' -> ('F:eq1', 'x^2+1')
+    """
+    parts = text.split(delimiter, 1)
+    if len(parts) == 1:
+        return parts[0], ""
+    return parts[0], parts[1]
+
+
+def import_from_string(raw_text: str) -> bool:
+    """
+    Read the import/export text and rebuild the lists/settings from it.
+
+    Import format:
+    F:id~expression
+    C:id~r_expr~g_expr~b_expr
+    R:id~function_id~0_or_1
+    D~function_id~color_id~restriction_id
+    S:key~value
+
+    Important:
+    If a record gets split across multiple physical lines during paste,
+    any continuation lines are appended onto the previous record.
+    """
+    global functionsList, colorsList, restrictionsList, drawList
+    global ANGLE_MODE, SCREEN_SIZE_INDEX
+    global settings_transfer_status, settings_values, active_settings_field
+
+    text = raw_text.strip()
+    if not text:
+        settings_transfer_status = "Import failed: empty text box."
+        return False
+
+    new_functions = []
+    new_colors = []
+    new_restrictions = []
+    new_draw = []
+    imported_settings = {}
+
+    try:
+        # ------------------------------------------
+        # Step 1: rebuild wrapped records
+        # ------------------------------------------
+        # Only these prefixes can start a new record.
+        record_prefixes = ("F:", "C:", "R:", "D~", "S:")
+
+        logical_lines = []
+        current_line = ""
+
+        for raw_line in text.splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+
+            # If this line begins a new valid record, start a new logical line.
+            if line.startswith(record_prefixes):
+                if current_line:
+                    logical_lines.append(current_line)
+                current_line = line
+            else:
+                # Otherwise, this is treated as a continuation of the previous line.
+                # We append it directly so pasted wrapped math expressions still work.
+                if current_line:
+                    current_line += line
+                else:
+                    raise ValueError(f"Unrecognized line: {line}")
+
+        if current_line:
+            logical_lines.append(current_line)
+
+        # ------------------------------------------
+        # Step 2: parse each rebuilt logical line
+        # ------------------------------------------
+        for line in logical_lines:
+            left, right = _split_first(line, "~")
+            left = left.strip()
+            right = right.strip()
+
+            # Function line: F:id~expression
+            if left.startswith("F:"):
+                item_id = left[2:].strip()
+                new_functions.append((item_id, right))
+
+            # Color line: C:id~r_expr~g_expr~b_expr
+            elif left.startswith("C:"):
+                item_id = left[2:].strip()
+                parts = right.split("~", 2)
+                if len(parts) != 3:
+                    raise ValueError(f"Color '{item_id}' must be r~g~b.")
+                new_colors.append((
+                    item_id,
+                    parts[0].strip(),
+                    parts[1].strip(),
+                    parts[2].strip()
+                ))
+
+            # Restriction line: R:id~function_id~0_or_1
+            elif left.startswith("R:"):
+                item_id = left[2:].strip()
+                parts = right.split("~", 1)
+                if len(parts) != 2:
+                    raise ValueError(f"Restriction '{item_id}' must be function_id~0_or_1.")
+
+                function_id = parts[0].strip()
+                inverse_raw = parts[1].strip().lower()
+                is_inverse = inverse_raw in {"1", "true", "t", "yes"}
+                new_restrictions.append((item_id, function_id, is_inverse))
+
+            # Draw line: D~function_id~color_id~restriction_id
+            elif left == "D":
+                parts = right.split("~", 2)
+                if len(parts) != 3:
+                    raise ValueError("Draw row must be function~color~restriction.")
+                new_draw.append((
+                    parts[0].strip(),
+                    parts[1].strip(),
+                    parts[2].strip()
+                ))
+
+            # Setting line: S:key~value
+            elif left.startswith("S:"):
+                setting_key = left[2:].strip()
+                imported_settings[setting_key] = right
+
+            else:
+                raise ValueError(f"Unrecognized line: {line}")
+
+        # ------------------------------------------
+        # Step 3: apply imported data
+        # ------------------------------------------
+        functionsList = new_functions if new_functions else [("", "")]
+        colorsList = new_colors if new_colors else [("", "", "", "")]
+        restrictionsList = new_restrictions if new_restrictions else [("", "", False)]
+        drawList = new_draw if new_draw else [("", "", "")]
+
+        for key in ["x_min", "x_points", "x_max", "y_min", "y_points", "y_max", "max_recursion"]:
+            if key in imported_settings:
+                settings_values[key] = imported_settings[key]
+
+        if "angle_mode" in imported_settings and imported_settings["angle_mode"] in {"radians", "degrees"}:
+            ANGLE_MODE = imported_settings["angle_mode"]
+
+        if "screen_size_index" in imported_settings:
+            try:
+                SCREEN_SIZE_INDEX = int(imported_settings["screen_size_index"]) % len(SCREEN_SIZE_OPTIONS)
+            except ValueError:
+                pass
+
+        apply_settings_from_text()
+        apply_screen_size_from_index(SCREEN_SIZE_INDEX, X_MATH_MAX - X_MATH_MIN, Y_MATH_MAX - Y_MATH_MIN)
+        update_functions()
+
+        active_settings_field = None
+        settings_transfer_status = (
+            f"Imported {len(functionsList)}F, {len(colorsList)}C, "
+            f"{len(restrictionsList)}R, {len(drawList)}D."
+        )
+        return True
+
+    except ValueError as exc:
+        settings_transfer_status = f"Import failed: {exc}"
+        return False
 # TODO: the UI for the other 3 tabs (Justin)
 # (should probably use something similar to render_tab_labels and draw_button for this?)
 
@@ -1159,7 +1373,7 @@ def render_settings_overlay(screen: pygame.Surface, font: pygame.font.Font) -> N
                             enter_h)
 
         return y + 48
-
+    
     current_y = TABS_HEIGHT + 14
     current_y = draw_axis_section(current_y, "X", "x")
     current_y = draw_axis_section(current_y, "Y", "y")
@@ -1167,6 +1381,70 @@ def render_settings_overlay(screen: pygame.Surface, font: pygame.font.Font) -> N
     current_y = draw_current_mode_row(current_y)
     current_y += row_gap
     current_y = draw_max_depth_row(current_y + 4)
+
+    # -----------------------------
+    # Import / Export section
+    # -----------------------------
+    transfer_top = max(current_y + 10, HEIGHT - 165)
+    screen.blit(label_font.render("Import / Export:", True, (0, 0, 0)), (margin_x, transfer_top))
+
+    # Main text area that shows exported text or accepts pasted text
+    transfer_rect = pygame.Rect(margin_x, transfer_top + 24, content_w, 40)
+    settings_buttons["transfer_text"] = transfer_rect
+
+    pygame.draw.rect(
+        screen,
+        (255, 255, 255) if active_settings_field == "transfer_text" else (235, 240, 246),
+        transfer_rect
+    )
+    pygame.draw.rect(screen, (95, 95, 95), transfer_rect, 2)
+
+    # Show a short preview of the transfer text
+    # Show a short preview of the transfer text
+    # Replace line breaks with spaces so the preview stays on one visual line
+    preview_text = settings_transfer_text.replace("\n", " ")
+
+    # Render the full preview text
+    preview_surface = small_label_font.render(preview_text, True, (0, 0, 0))
+
+    # Clip the text so it cannot draw outside the textbox
+    preview_clip = pygame.Rect(
+        transfer_rect.x + 5,
+        transfer_rect.y + 4,
+        transfer_rect.width - 10,
+        16
+    )
+    screen.blit(preview_surface, (transfer_rect.x + 5, transfer_rect.y + 4), area=pygame.Rect(0, 0, preview_clip.width, preview_clip.height))
+
+    # Helper text
+    screen.blit(
+        small_label_font.render("Paste exported text here, then press Import.", True, (80, 80, 80)),
+        (transfer_rect.x + 5, transfer_rect.y + 22)
+    )
+
+    # Buttons under the text area
+    button_y = transfer_rect.y + transfer_rect.height + 8
+    settings_buttons["export_copy"] = pygame.Rect(margin_x, button_y, 66, 26)
+    settings_buttons["paste_clipboard"] = pygame.Rect(margin_x + 74, button_y, 56, 26)
+    settings_buttons["import_text"] = pygame.Rect(margin_x + 138, button_y, 62, 26)
+
+    draw_button(screen, button_font, settings_buttons["export_copy"], "Copy")
+    draw_button(screen, button_font, settings_buttons["paste_clipboard"], "Paste")
+    draw_button(screen, button_font, settings_buttons["import_text"], "Import")
+
+    if settings_transfer_status:
+        # Shorten long status text so it fits in the sidebar
+        status_text = settings_transfer_status
+        max_width = content_w
+
+        while status_text and small_label_font.size(status_text)[0] > max_width:
+            status_text = status_text[:-1]
+
+        if status_text != settings_transfer_status and len(status_text) >= 3:
+            status_text = status_text[:-3] + "..."
+
+        status_surface = small_label_font.render(status_text, True, (40, 40, 40))
+        screen.blit(status_surface, (margin_x, button_y + 32))
 
     bottom_y = HEIGHT - 46
     settings_buttons["size_prev"] = pygame.Rect(margin_x, bottom_y, 36, 26)
@@ -1261,9 +1539,9 @@ def handle_settings_textbox_click(mouse_pos) -> None:
     global active_settings_field
 
     textbox_keys = [
-        "x_min", "x_points", "x_max",
-        "y_min", "y_points", "y_max",
-        "max_recursion"
+    "x_min", "x_points", "x_max",
+    "y_min", "y_points", "y_max",
+    "max_recursion", "transfer_text"
     ]
 
     active_settings_field = None
@@ -1277,26 +1555,60 @@ def handle_settings_keydown(event) -> None:
     """
     Send keyboard input into the currently active settings textbox.
     """
-    global active_settings_field
+    global active_settings_field, settings_transfer_text, settings_transfer_status
 
     if active_settings_field is None:
         return
 
+    # -----------------------------------------
+    # Special handling for the import/export box
+    # -----------------------------------------
+    if active_settings_field == "transfer_text":
+        if event.key == pygame.K_ESCAPE:
+            active_settings_field = None
+            return
+
+        if event.key == pygame.K_BACKSPACE:
+            settings_transfer_text = settings_transfer_text[:-1]
+            return
+
+        # Ctrl+V paste support
+        if event.key == pygame.K_v and (event.mod & pygame.KMOD_CTRL):
+            try:
+                clip_text = pygame.scrap.get(pygame.SCRAP_TEXT)
+                if clip_text is not None:
+                    settings_transfer_text += clip_text.decode("utf-8", errors="ignore").replace("\x00", "")
+            except pygame.error:
+                settings_transfer_status = "Clipboard paste is not available on this device."
+            return
+
+        # Enter makes a new line in the transfer box
+        if event.key == pygame.K_RETURN:
+            settings_transfer_text += "\n"
+            return
+
+        # Normal typed characters
+        if event.unicode:
+            settings_transfer_text += event.unicode
+        return
+
+    # -----------------------------------------
+    # Normal numeric settings boxes
+    # -----------------------------------------
     if event.key == pygame.K_RETURN:
         apply_settings_from_text()
         active_settings_field = None
         update_settings_error_states()
         return
-
+    
     if event.key == pygame.K_ESCAPE:
         active_settings_field = None
         update_settings_error_states()
         return
 
     if event.key == pygame.K_BACKSPACE:
-        if active_settings_field is not None:
-            settings_values[active_settings_field] = settings_values[active_settings_field][:-1]
-            update_settings_error_states()
+        settings_values[active_settings_field] = settings_values[active_settings_field][:-1]
+        update_settings_error_states()
         return
 
     allowed_chars = "0123456789.-"
@@ -1568,6 +1880,50 @@ if __name__ == "__main__":
                         for field in draw_ui_fields: field.cancel()
 
                 if current_panel == 'Settings':
+
+                    # ---------------------------------
+                    # Import / Export buttons
+                    # ---------------------------------
+
+                    # Copy/export current state into the text box and clipboard
+                    if settings_buttons.get("export_copy") and settings_buttons["export_copy"].collidepoint(mouse_pos):
+                        settings_transfer_text = build_export_string()
+
+                        try:
+                            pygame.scrap.put(pygame.SCRAP_TEXT, settings_transfer_text.encode("utf-8"))
+                            settings_transfer_status = "Exported current state to the text box and clipboard."
+                        except pygame.error:
+                            settings_transfer_status = "Exported current state to the text box."
+
+                        active_settings_field = "transfer_text"
+                        continue
+
+                    # Paste clipboard into the transfer box
+                    if settings_buttons.get("paste_clipboard") and settings_buttons["paste_clipboard"].collidepoint(mouse_pos):
+                        try:
+                            clip_text = pygame.scrap.get(pygame.SCRAP_TEXT)
+                            if clip_text is None:
+                                settings_transfer_status = "Clipboard is empty."
+                            else:
+                                settings_transfer_text = clip_text.decode("utf-8", errors="ignore").replace("\x00", "")
+                                settings_transfer_status = "Pasted clipboard text into the import box."
+                                active_settings_field = "transfer_text"
+                        except pygame.error:
+                            settings_transfer_status = "Clipboard paste is not available on this device."
+                        continue
+
+                    # Import from the current transfer text
+                    if settings_buttons.get("import_text") and settings_buttons["import_text"].collidepoint(mouse_pos):
+                        if import_from_string(settings_transfer_text):
+                            # Rebuild UI rows so the imported data shows up immediately
+                            function_ui_fields = [FunctionsEntryField(i, functionsList) for i in range(len(functionsList) + 1)]
+                            colors_ui_fields = [ColorsEntryField(i, colorsList) for i in range(len(colorsList) + 1)]
+                            rest_ui_fields = [RestrictionsEntryField(i, restrictionsList) for i in range(len(restrictionsList) + 1)]
+                            draw_ui_fields = [DrawEntryField(i, drawList) for i in range(len(drawList) + 1)]
+
+                            screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
+                            rerender_graph_surface(x_coords, y_coords)
+                        continue
                     # 1. First check the ENTER button for the currently active field
                     if active_settings_field is not None:
                         active_enter_key = f"{active_settings_field}_enter"
