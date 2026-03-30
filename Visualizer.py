@@ -1043,7 +1043,7 @@ def update_functions() -> None:
         # Rule 1: NO Tildes in the declaration box!
         color_errs = []
         for n in range(1, 4):
-            if item[n] not in functionsDict:
+            if item[n].strip() != "" and item[n] not in functionsDict:
                 color_errs.append("Function ID not found")
                 continue
         if item[0] in colorsDict:
@@ -1053,7 +1053,10 @@ def update_functions() -> None:
         if len(color_errs) > 0:
             color_error_states[i] = ((200, 50, 50), ", ".join(color_errs))
         else:
-            colorsDict[item[0]] = Color(functionsDict[item[1]], functionsDict[item[2]], functionsDict[item[3]])
+            c_r = Equation("x") if item[1].strip() == "" else functionsDict[item[1]]
+            c_g = Equation("x") if item[2].strip() == "" else functionsDict[item[2]]
+            c_b = Equation("x") if item[3].strip() == "" else functionsDict[item[3]]
+            colorsDict[item[0]] = Color(c_r, c_g, c_b)
             color_error_states[i] = ((50, 200, 50), "Valid")
 
     restrictionsDict.clear()
@@ -1064,10 +1067,11 @@ def update_functions() -> None:
         if x[0] in restrictionsDict:
             restriction_error_states[i] = ((200, 200, 50), "Duplicate ID")
             continue
-        if x[1] not in functionsDict:
+        if x[1].strip() != "" and x[1] not in functionsDict:
             restriction_error_states[i] = ((200, 50, 50), "Function ID not found")
         else:
-            restrictionsDict[x[0]] = Boundary(functionsDict[x[1]], x[2])
+            func_val = Equation("1") if x[1].strip() == "" else functionsDict[x[1]]
+            restrictionsDict[x[0]] = Boundary(func_val, x[2])
             restriction_error_states[i] = ((50, 200, 50), "Valid")
 
     drawFinal.clear()
@@ -1079,15 +1083,17 @@ def update_functions() -> None:
         errs = []
         if x[0] not in functionsDict:
             errs.append("Function ID not found")
-        if x[1] not in colorsDict:
+        if x[1].strip() != "" and x[1] not in colorsDict:
             errs.append("Colour ID not found")
-        if x[2] not in restrictionsDict:
+        if x[2].strip() != "" and x[2] not in restrictionsDict:
             errs.append("Restriction ID not found")
 
         if len(errs) > 0:
             draw_error_states[i] = ((200, 50, 50), ", ".join(errs))
         else:
-            drawFinal.append((functionsDict[x[0]], colorsDict[x[1]], restrictionsDict[x[2]]))
+            c_val = Color(Equation("x"), Equation("x"), Equation("x")) if x[1].strip() == "" else colorsDict[x[1]]
+            r_val = Boundary(Equation("1"), False) if x[2].strip() == "" else restrictionsDict[x[2]]
+            drawFinal.append((functionsDict[x[0]], c_val, r_val))
             draw_error_states[i] = ((50, 200, 50), "Valid")
 
 
