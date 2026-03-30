@@ -124,7 +124,7 @@ class FunctionsEntryField(DataEntryField):
         pygame.draw.rect(surface, bg_color, self.rect)
         pygame.draw.rect(surface, (150, 150, 150), self.rect, 1)  # Border
 
-        # Added for Scrolling, not sure if it's correct
+        # Added for Scrolling
         self.y = self.Y + scroll_y_vals[0]
         self.rect.y = self.y
         self.id_rect.y = self.y + 10
