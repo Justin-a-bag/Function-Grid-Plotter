@@ -66,7 +66,7 @@ colorsList = [("rgb", "255((x-(cos(3.7(x+0.8))/3))/2.8+1.28)",
 colorsDict = {}
 restrictionsList = [("rest", "rest", False)]
 restrictionsDict = {}
-drawList = [("eq", "my_color", "rest")]
+drawList = [("eq", "rgb", "rest")]
 drawFinal = []
 
 # Maps list index -> ((R, G, B), "Error Message")
@@ -317,7 +317,7 @@ class ColorsEntryField(FunctionsEntryField):
         # 1. Error Flagging
         # Fetch the color from our global error_states dict based on this field's index.
         # Defaults to Grey if not found.
-        flag_color = error_states.get(self.index, ((150, 150, 150), ""))[0]
+        flag_color = color_error_states.get(self.index, ((150, 150, 150), ""))[0]
         pygame.draw.circle(surface, flag_color, (15, self.y + 25), 6)
 
         # 2. Draw ID Field
@@ -491,9 +491,6 @@ class ColorsEntryField(FunctionsEntryField):
         return True  # Signals the main loop that we need to recalculate the math grid
 
 
-
-
-
 class RestrictionsEntryField(FunctionsEntryField):
     """
     Entry field for Restrictions tab: ID, Target ID, and Boolean toggle
@@ -509,8 +506,8 @@ class RestrictionsEntryField(FunctionsEntryField):
 
         # Sub-rectangles for hit-testing
         self.id_rect = pygame.Rect(30, self.y + 10, 50, 30)
-        self.full_data_rect = pygame.Rect(85, self.y + 10, 150, 30) # for generic click checking
-        self.data_rect1 = pygame.Rect(85, self.y + 10, 110, 30) # for the target func id
+        self.full_data_rect = pygame.Rect(85, self.y + 10, 150, 30)  # for generic click checking
+        self.data_rect1 = pygame.Rect(85, self.y + 10, 110, 30)  # for the target func id
         self.bool_rect = pygame.Rect(200, self.y + 10, 35, 30)  # for the boolean toggler
         self.btn_enter = pygame.Rect(240, self.y + 10, 50, 30)
 
@@ -1273,6 +1270,28 @@ def handle_settings_keydown(event) -> None:
     if active_settings_field is None:
         return
 
+    if event.key == pygame.K_RETURN:
+        apply_settings_from_text()
+        active_settings_field = None
+        update_settings_error_states()
+        return
+
+    if event.key == pygame.K_ESCAPE:
+        active_settings_field = None
+        update_settings_error_states()
+        return
+
+    if event.key == pygame.K_BACKSPACE:
+        if active_settings_field is not None:
+            settings_values[active_settings_field] = settings_values[active_settings_field][:-1]
+            update_settings_error_states()
+        return
+
+    allowed_chars = "0123456789.-"
+    if event.unicode in allowed_chars:
+        settings_values[active_settings_field] += event.unicode
+        update_settings_error_states()
+
 def update_settings_error_states() -> None:
     """
     Rebuild the color state for settings fields.
@@ -1472,7 +1491,7 @@ if __name__ == "__main__":
                         for field in function_ui_fields: field.cancel()
 
                 # TODO: the other 3 panels (Justin)
-                if current_panel == 'Colours':
+                if current_panel == 'Colors':
                     if event.button == 4:       # scroll up
                         scroll_y_vals[1] -= 5
                     elif event.button == 5:     # scroll down
@@ -1506,12 +1525,14 @@ if __name__ == "__main__":
                             if needs_redraw:
                                 calculate_draw_bounds(X_MATH_MAX - X_MATH_MIN, Y_MATH_MAX - Y_MATH_MIN)
                                 rerender_graph_surface(x_coords, y_coords)
-                                rest_ui_fields = [RestrictionsEntryField(i, restrictionsList) for i in range(len(restrictionsList) + 1)]
+                                rest_ui_fields = [RestrictionsEntryField(i, restrictionsList)
+                                                  for i in range(len(restrictionsList) + 1)]
                         else:
                             if field.editing_id or getattr(field, 'editing_data', False):
                                 field.cancel()
                     if not clicked_any_field:
-                        for field in rest_ui_fields: field.cancel()
+                        for field in rest_ui_fields:
+                            field.cancel()
 
                 if current_panel == 'Draw':
                     if event.button == 4:       # scroll up
@@ -1580,7 +1601,7 @@ if __name__ == "__main__":
                 if current_panel == 'Functions':
                     for field in function_ui_fields:
                         field.handle_keydown(event)
-                elif current_panel == 'Colours':
+                elif current_panel == 'Colors':
                     for field in colors_ui_fields:
                         field.handle_keydown(event)
                 elif current_panel == 'Restrictions':
@@ -1600,7 +1621,7 @@ if __name__ == "__main__":
             # label = font.render("Toggle AST", True, (0, 0, 0))
             # screen.blit(label, (195, 7))
 
-        elif current_panel == 'Colours':
+        elif current_panel == 'Colors':
             for field in colors_ui_fields:
                 field.draw(screen)
 
