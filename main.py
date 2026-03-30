@@ -11,7 +11,7 @@ import sys
 import pyperclip
 
 # Import your custom classes
-from equation import Equation
+from Equation import Equation
 from color import Color
 from boundary import Boundary
 from Entryfield import DataEntryField
@@ -302,14 +302,17 @@ class FunctionsEntryField(DataEntryField):
                 self.scrolls["data"] = cursor_pixel
 
     def cancel(self):
-        """Reverts the field to what it had originally without changing data."""
+        """Reverts the field to its pre-edited state without saving changes."""
         self.id_str = self.backup_id
         self.data_str = self.backup_data
         self.editing_id = False
         self.editing_data = False
 
     def confirm(self) -> bool:
-        """Changes list indices and triggers dict rebuild."""
+        """
+        Saves the textbox data into the global Functions list.
+        Deletes the field if empty, rebuilds dictionaries, and returns True.
+        """
         global functionsList
         if self.index < len(functionsList):
             if self.id_str.strip() == "" and self.data_str.strip() == "":
@@ -584,7 +587,7 @@ class ColorsEntryField(DataEntryField):
         self.editing_data = False
 
     def confirm(self) -> bool:
-        """Changes list indices and triggers dict rebuild."""
+        """Saves current fields to the global Colors list, discarding if entirely empty."""
         global colorsList
         if self.index < len(colorsList):
             if (self.id_str.strip() == "" and self.data_str.strip() == "" and self.data_str_g.strip() == "" and
@@ -1005,6 +1008,7 @@ class DrawEntryField(DataEntryField):
         self.editing_data = False
 
     def confirm(self) -> bool:
+        """Saves current fields to the global Draw finalization list, discarding if entirely empty."""
         global drawList
         if self.index < len(drawList):
             if self.id_str.strip() == "" and self.data_str_c.strip() == "" and self.data_str_r.strip() == "":
@@ -1201,19 +1205,8 @@ def draw_button(screen: pygame.Surface, font: pygame.font.Font, rect: pygame.Rec
 
 def build_export_string() -> str:
     """
-    Turn the current app state into one export string.
-
-    Export format:
-
-    Function lines...
-    ~~~~~
-    Color lines...
-    ~~~~~
-    Restriction lines...
-    ~~~~~
-    Draw lines...
-    ~~~~~
-    Settings lines...
+    Serializes the current mathematical state (Functions, Colors, Restrictions, Draw, Settings)
+    into a structured text block parseable by `import_from_string`.
     """
     function_lines = []
     color_lines = []
@@ -1260,11 +1253,7 @@ def build_export_string() -> str:
 
 
 def _split_first(text: str, delimiter: str) -> tuple[str, str]:
-    """
-    Split only on the FIRST occurrence of delimiter.
-    Example:
-        'F:eq1~x^2+1' -> ('F:eq1', 'x^2+1')
-    """
+    """Helper method to split a string strictly on its first identified delimiter."""
     parts = text.split(delimiter, 1)
     if len(parts) == 1:
         return parts[0], ""
@@ -1769,9 +1758,7 @@ def apply_settings_from_text() -> None:
 
 
 def handle_settings_textbox_click(mouse_pos) -> None:
-    """
-    Activate whichever settings textbox was clicked.
-    """
+    """Sets focus on the clicked settings textbox and computes text cursor position."""
     global active_settings_field
 
     textbox_keys = [
@@ -1801,9 +1788,7 @@ def handle_settings_textbox_click(mouse_pos) -> None:
 
 
 def handle_settings_keydown(event) -> None:
-    """
-    Send keyboard input into the currently active settings textbox.
-    """
+    """Processes character typing, backspaces, and autoscrolling for active settings textboxes."""
     global active_settings_field, settings_transfer_text, settings_transfer_status
 
     if active_settings_field is None:

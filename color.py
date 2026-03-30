@@ -8,7 +8,7 @@ Matthew Chen, Justin Ng, Cindy Liu, Lingnan Meng
 
 
 from __future__ import annotations
-from equation import Equation
+from Equation import Equation
 
 class Color:
     """

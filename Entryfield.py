@@ -44,13 +44,18 @@ class DataEntryField:
         self.editing_data = False
 
     def draw(self, surface: pygame.Surface):
+        """Draws the UI field component, backgrounds, values, and cursors on the surface."""
         raise NotImplementedError()
 
     def handle_click(self, mouse_pos) -> bool:
-        """Returns True if the 'Enter' button was clicked and confirmed."""
+        """
+        Handles mouse input for setting focus.
+        Returns True if the 'Enter' button was clicked and confirmed.
+        """
         raise NotImplementedError()
 
     def handle_keydown(self, event):
+        """Processes character and navigation keys when this field is active."""
         raise NotImplementedError()
 
     def cancel(self):
@@ -61,5 +66,9 @@ class DataEntryField:
         self.editing_data = False
 
     def confirm(self) -> bool:
-        """Changes list indices and triggers dict rebuild."""
+        """
+        Saves the edited contents back into the data registry arrays.
+        Changes list indices, applies bounds, and triggers the AST dictionary rebuild.
+        Returns True to signify the state actually changed.
+        """
         raise NotImplementedError()
