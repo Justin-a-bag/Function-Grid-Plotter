@@ -6,9 +6,9 @@ This module contains the Color class containing the r,g,b functions required for
 Matthew Chen, Justin Ng, Cindy Liu, Lingnan Meng
 """
 
-
 from __future__ import annotations
 from equation import Equation
+
 
 class Color:
     """
@@ -18,12 +18,13 @@ class Color:
     green: Equation
     blue: Equation
 
-    def __init__(self, red=Equation("x"), green=Equation("x"), blue=Equation("x")) -> None:
+    def __init__(self, red: Equation = Equation("x"), green: Equation = Equation("x"), blue: Equation = Equation("x")) \
+            -> None:
         self.red = red
         self.green = green
         self.blue = blue
 
-    def get_color_tuple(self, zval: float, angle_mode="potato", env: dict = None, depth=0) -> tuple:
+    def get_color_tuple(self, zval: float, angle_mode: str = "potato", env: dict = None, depth: int = 0) -> tuple:
         """
         Evaluates the constituent RGB equations for a given spatial depth or iteration ('zval').
         Returns a clamped (0-255) integer RGB tuple, or (-1, -1, -1) if invalid.
