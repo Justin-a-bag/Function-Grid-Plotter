@@ -18,7 +18,7 @@ class Boundary:
 
     def __init__(self, boundary=Equation("1"), checksmaller=False) -> None:
         self.bounder = boundary
-        self.checkSmaller = checksmaller
+        self.check_smaller = checksmaller
 
     def in_bounds(self, x: float, y: float, angle_mode="potato", env: dict = None, depth=0) -> bool:
         """
