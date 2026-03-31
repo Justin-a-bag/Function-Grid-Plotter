@@ -17,7 +17,7 @@ class Equation:
 
     tree: Node
 
-    def tokenize(self, eq: str) -> list:
+    def tokenize(self, equas: str) -> list:
         """
         Reads the equation string from left to right, grouping characters
         into tokens based on their type (numbers, operators, functions, variables).
@@ -27,15 +27,15 @@ class Equation:
         i = 0
         # \u and \x are danger characters so be careful
 
-        REPLACEMENTS = {
-            '{': '(', '}': ')','(-': '(0-',
-        '\a': '`a', '\b': '`b', '\f': '`f', '\n': '`n', '\r': '`r', '\t': '`t', '\v': '`v',
-            '\left(':'(','\right)':')'
+        replacements = {
+            '{': '(', '}': ')', '(-': '(0-',
+            '\a': '`a', '\b': '`b', '\f': '`f', '\n': '`n', '\r': '`r', '\t': '`t', '\v': '`v',
+            '\left(': '(', '\right)': ')'
         }
 
-        equation = eq.replace('}{',',').replace(' ','')
-        for x in REPLACEMENTS:
-            equation = equation.replace(x, REPLACEMENTS[x])
+        equation = equas.replace('}{', ',').replace(' ', '')
+        for x in replacements:
+            equation = equation.replace(x, replacements[x])
         if equation.startswith('-'):
             equation = '0' + equation
         while i < len(equation):
@@ -68,7 +68,7 @@ class Equation:
                 # Clean up: remove the leading backslash because we don't need it
                 unit = unit.lstrip('\\')
                 # allows for input of \left( and \right)
-                if unit != 'left' and unit != 'right':
+                if unit not in {'left', 'right'}:
                     tokens.append(unit)
             elif char == '~':
                 unit = "~"
@@ -85,7 +85,8 @@ class Equation:
                 tokens.append(unit)
             # 4. Handle Single Symbols (+, -, *, /, ^, (, ))
             # if it sees a symbol immediately turn it into a token
-            # Note: this implementation might need to be changed if you want to allow ** as an input for ^ or smth like that
+            # Note: this implementation might need to be changed if you want to
+            # allow ** as an input for ^ or smth like that
             elif char in "+-*/^(),":
                 tokens.append(char)
                 i += 1
@@ -107,14 +108,13 @@ class Equation:
                 # If the token that was just added is a digit/x/y/) and the next digit is a letter/(
                 # there are other cases of this but i'm too lazy to implement that
                 if (curr_token.replace('.', '', 1).isdigit() or curr_token in ('x', 'y', ')', 'pi',
-                                                                               'e') or curr_token.startswith('~')) and \
-                        (next_token.isalpha() or next_token in ('x', 'y', '(', 'pi', 'e') or next_token.startswith(
-                            '~')):
-                    final_tokens.append('*')
+                                                                               'e') or curr_token.startswith('~')):
+                    if next_token.isalpha() or next_token in ('x', 'y', '(', 'pi', 'e') or next_token.startswith('~'):
+                        final_tokens.append('*')
 
         return final_tokens
 
-    def __init__(self, infix_string: str):
+    def __init__(self, infix_string: str) -> None:
         tokenized_input = self.tokenize(infix_string)
 
         # 1. Tokenize -> 2. Shunting-Yard -> 3. Stack-based Build
@@ -123,7 +123,7 @@ class Equation:
         Precedence dictates operation order (BEDMAS).
         Replaceable represents alternative LaTeX formats mapping to standard operators.
         """
-        PRECEDENCE = {
+        precedence = {
             '+': (1, 2), '-': (1, 2),
             '*': (2, 2), '/': (2, 2),
             '^': (3, 2), '%': (2, 2),
@@ -141,19 +141,19 @@ class Equation:
             'pi': (5, 0), 'e': (5, 0)
 
         }
-        REPLACEABLE = {
+        replaceable = {
             'cdot': '*', 'times': '*'
         }
         potato = False
         output_stack = []  # This stores our completed Tree Nodes
         operator_stack = []  # This stores operators that are waiting for their children
 
-        def apply_operator():
+        def apply_operator() -> None:
             """Pops an operator and its required children to create a subtree."""
             nonlocal potato
             try:
                 op = operator_stack.pop()
-                num_args = PRECEDENCE[op][1]
+                num_args = precedence[op][1]
 
                 children = []
                 for _ in range(num_args):
@@ -161,7 +161,7 @@ class Equation:
                 children.reverse()
 
                 output_stack.append(Node(op, children))
-            except (IndexError, KeyError): # <--- Catch KeyError too!
+            except (IndexError, KeyError):  # <--- Catch KeyError too!
                 potato = True
                 output_stack.append(Node('potato', []))
 
@@ -197,18 +197,18 @@ class Equation:
                     operator_stack.pop()  # Safely remove the '('
 
             # STEP 5: Functions and Operators
-            elif token in PRECEDENCE:
-                while (operator_stack and operator_stack[-1] != '(' and
-                       PRECEDENCE[operator_stack[-1]][0] >= PRECEDENCE[token][0]):
+            elif token in precedence:
+                while (operator_stack and operator_stack[-1] != '(' and precedence[operator_stack[-1]][0]
+                       >= precedence[token][0]):
                     apply_operator()
                 operator_stack.append(token)
 
             # STEP 6: Replaceable LaTeX (cdot, times)
-            elif token in REPLACEABLE:
-                while (operator_stack and operator_stack[-1] != '(' and
-                       PRECEDENCE[operator_stack[-1]][0] >= PRECEDENCE[REPLACEABLE[token]][0]):
+            elif token in replaceable:
+                while (operator_stack and operator_stack[-1] != '(' and precedence[operator_stack[-1]][0]
+                       >= precedence[replaceable[token]][0]):
                     apply_operator()
-                operator_stack.append(REPLACEABLE[token])
+                operator_stack.append(replaceable[token])
 
             # STEP 7: Multi-Argument Commas
             elif token == ',':
@@ -241,13 +241,14 @@ class Equation:
         # The very last item on the output stack is the Root of our tree!
         self.tree = output_stack[0]
 
-    def evaluate(self, x: float, y: float, angle_mode="radians", env: dict = None, depth=50) -> float:
+    def evaluate(self, x: float, y: float, angle_mode: str = "radians", env: dict = None, depth: int = 50) \
+            -> float | str:
         """
         Evaluates the equation syntax tree for a specific (x, y) coordinate.
         Returns the computed float, or 'nan' on complex or invalid paths.
         """
         if depth < 0:
-            return (x**2+y**2)**0.5
+            return (x ** 2 + y ** 2) ** 0.5
 
         if env is None:
             env = {}
@@ -261,10 +262,9 @@ class Equation:
 
         except RecursionError:
             # We hit the stack overflow!
-            return (x**2+y**2)**0.5
+            return (x ** 2 + y ** 2) ** 0.5
 
-
-    def size(self, env: dict = None, depth=50) -> int:
+    def size(self, env: dict = None, depth: int = 50) -> int:
         """Returns the total number of nodes in this equation's evaluation tree."""
         if env is None:
             env = {}
@@ -276,16 +276,23 @@ class Equation:
 
 
 class Node:
+    """
+        The Node class of the AST, with an operation, and a sorted list of nodes
+        operation is either a math operation, variable, or value
+    """
     # op is either a string (the operation) or a value (a number or x or y)
     op: str
     children: list
 
-    def __init__(self, op: str, children=None):
+    def __init__(self, op: str, children: list = None) -> None:
         self.op = op
         # children must be an ordered list
         self.children = children if children is not None else []
 
-    def size(self, env: dict = None, depth=50) -> int:
+    def size(self, env: dict = None, depth: int = 50) -> int:
+        """
+            returns the total number of nodes in this subtree.
+        """
         total_nodes = 0
 
         # Stack holds tuples of: (Node, current_depth)
@@ -316,7 +323,9 @@ class Node:
         return total_nodes
 
     def ast_to_string(self) -> str:
-
+        """
+            returns a string representation of the AST ex. "2*cos(x)+5"
+        """
         # base case: leaf node
         if len(self.children) == 0:
             return str(self.op)
@@ -335,7 +344,11 @@ class Node:
         ni = ni[:-1] + ")"
         return ni
 
-    def evaluate(self, x, y, use_radians=True, env: dict = None, depth=50):
+    def evaluate(self, x: float, y: float, use_radians: bool = True, env: dict = None, depth: int = 50) \
+            -> str | int | float | complex:
+        """
+            returns the computed value of the ast given the x,y coordinates and depending on radians and degrees.
+        """
         try:
             # Evaluate children first
             vals = [c.evaluate(x, y, use_radians, env, depth) for c in self.children]
@@ -347,7 +360,7 @@ class Node:
                 # not a number error
                 return 'nan'
 
-            # Every time you add a function to PRECEDENCE add its implementation down here
+            # Every time you add a function to precedence add its implementation down here
             # base cases
             if isinstance(self.op, float):
                 return float(self.op)
@@ -394,7 +407,7 @@ class Node:
             if self.op == 'exp':
                 return math.e ** vals[0]
             if self.op == 'frac':
-                return vals[0]/vals[1] if vals[1] != 0 else 'nan'
+                return vals[0] / vals[1] if vals[1] != 0 else 'nan'
             if self.op == 'ln':
                 return math.log(vals[0]) if vals[0] > 0 else 'nan'
             if self.op == 'log':
@@ -422,7 +435,7 @@ class Node:
 
             # trig with bad values
             if self.op == 'cot':
-                return math.tan(math.pi / 2 - trig_input) if math.sin(trig_input) != 0.0 else 'nan'
+                return math.tan((math.pi / 2 - trig_input)) if math.sin(trig_input) != 0.0 else 'nan'
             if self.op == 'tan':
                 return math.tan(trig_input) if math.cos(trig_input) != 0.0 else 'nan'
             if self.op == 'csc':
@@ -431,16 +444,16 @@ class Node:
                 return 1 / math.cos(trig_input) if math.cos(trig_input) != 0.0 else 'nan'
             if self.op == 'arcsin':
                 result = math.asin(vals[0]) if vals[0] ** 2 <= 1 else 'nan'
-                return math.degrees(result) if result != 'nan' and use_radians == False else result
+                return math.degrees(result) if result != 'nan' and use_radians is False else result
             if self.op == 'arccos':
                 result = math.acos(vals[0]) if vals[0] ** 2 <= 1 else 'nan'
-                return math.degrees(result) if result != 'nan' and use_radians == False else result
+                return math.degrees(result) if result != 'nan' and use_radians is False else result
             if self.op == 'arcsec':
                 result = math.acos(1 / vals[0]) if vals[0] ** 2 >= 1 else 'nan'
-                return math.degrees(result) if result != 'nan' and use_radians == False else result
+                return math.degrees(result) if result != 'nan' and use_radians is False else result
             if self.op == 'arccsc':
                 result = math.asin(1 / vals[0]) if vals[0] ** 2 >= 1 else 'nan'
-                return math.degrees(result) if result != 'nan' and use_radians == False else result
+                return math.degrees(result) if result != 'nan' and use_radians is False else result
 
             # unrestricted hyperbolic trig
             if self.op == 'sinh':
