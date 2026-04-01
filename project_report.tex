@@ -41,7 +41,7 @@ The central data structure of our project is the Expression Tree, implemented vi
 \begin{enumerate}
     \item \textbf{Tokenization and Pre-processing:} The tokenize method in our Equation class cleans the raw string, handles LaTeX formatting (like \textbackslash{}frac), and safely isolates variables. Crucially, it algorithms dynamically inject * tokens to handle implicit multiplication (e.g., converting 2x to 2*x) and parses unary negative signs to prevent structural crashes.
     \item \textbf{The Shunting-Yard Algorithm:} We convert standard infix mathematical notation into a binary tree structure based on standard order of operations (PEMDAS). We utilize a stack-based builder (operator\_stack and output\_stack) governed by a PRECEDENCE dictionary to correctly nest operations.
-    \item \textbf{Recursive Grid Evaluation:} Inside visualizer.py, a nested loop generates the (x,y) coordinate grid. For each point, the engine calls drawFunc.evaluate(x, y), which triggers a depth-first, post-order traversal of the AST to compute the final z-value.
+    \item \textbf{Recursive Grid Evaluation:} Inside main.py, a nested loop generates the (x,y) coordinate grid. For each point, the engine calls drawFunc.evaluate(x, y), which triggers a depth-first, post-order traversal of the AST to compute the final z-value.
 \end{enumerate}
 
 \subsection{\textbf{Visual and Interactive Reporting}}
@@ -55,10 +55,10 @@ To run the Astra Render Engine:
 \begin{enumerate}
     \item Ensure you have Python 3.13.5 installed.
     \item Install the required external libraries:  install pygame and pyperclip from requirements.txt.
-    \item Execute python Visualizer.py.
+    \item Execute python main.py.
     \item Copy and import Example function from the REQUIREMENTS.txt file into Pygame settings window (instructions below)
 \end{enumerate}
-\textbf{Expected Output:} Upon running Visualizer.py, a Pygame window will open. 
+\textbf{Expected Output:} Upon running main.py, a Pygame window will open. 
 \\\\Extra Notes
 \begin{enumerate}
     \item{The Function Tab contains all functions used in the program}
@@ -67,7 +67,7 @@ To run the Astra Render Engine:
 NOTE: Higher Resolutions (x points and y points) WILL take longer to render.
 \\Copy the Sample Function (ON THE REQUIREMENTS FILE) and click import in Settings. Steps:
 \begin{enumerate}
-    \item open the Pygame window through Visualizer.py
+    \item open the Pygame window through main.py
     \item Go to Requirements.txt file and copy text under Example Function to clipboard
     \item go to Pygame Window, and go to settings tab
     \item click import on the bottom left
@@ -75,7 +75,7 @@ NOTE: Higher Resolutions (x points and y points) WILL take longer to render.
 
 \section{\textbf{Changes to the Project Plan}}
 
-Our decision to use Pygame came with many challenges. One significant challenge was how to implement textboxes and get inputs into the variables such that we can operate cleanly on it. To do this, an EntryField abstract class was made which allowed us to have a framework for the  Functions, Colors, Restrictions, and Draw subclasses that we would later create in the Visualizer class.
+Our decision to use Pygame came with many challenges. One significant challenge was how to implement textboxes and get inputs into the variables such that we can operate cleanly on it. To do this, an EntryField abstract class was made which allowed us to have a framework for the  Functions, Colors, Restrictions, and Draw subclasses that we would later create in the Main class.
 
 \section{\textbf{Discussion and Results}}
 Our primary goal was to build an engine capable of parsing and visualizing complex multivariable functions using ASTs. The results of our computational exploration demonstrate that while Expression Trees are highly effective for respecting mathematical precedence and evaluating raw strings, they introduce significant computational bottlenecks in a single-threaded Python environment.
