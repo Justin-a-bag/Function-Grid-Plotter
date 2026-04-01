@@ -6,8 +6,8 @@ This module contains the main loop
 Matthew Chen, Justin Ng, Cindy Liu, Lingnan Meng
 """
 from __future__ import annotations  # MUST be at the very top of the file
-import pygame
 import sys
+import pygame
 import pyperclip
 
 # Import your custom classes
@@ -1939,6 +1939,14 @@ def apply_screen_size_from_index(index: int, xrange: float, yrange: float) -> No
 
 # --- MAIN EXECUTION ---
 if __name__ == "__main__":
+    import doctest
+    doctest.testmod(verbose=True)
+
+    import python_ta
+    python_ta.check_all(config={
+        'max-line-length': 120
+    })
+
     X_GRID_RESOLUTION = 100
     X_MATH_MIN, X_MATH_MAX = -15.0, 15.0
     Y_GRID_RESOLUTION = 100
